@@ -1,5 +1,10 @@
 "# ScaleErrors" 
 
+Required modules to install:
+PyAudio 	https://people.csail.mit.edu/hubert/pyaudio/
+cv2			http://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_tutorials.html
+naoqi
+
 Running main.py runs a recording of video data, joint data, and audio data (.wav). 
 Line 21 through 35 contain some parameters for recording data:
 	ip 				Ip address of the robot. There's several options, uncomment the desired robot, comment the rest.
