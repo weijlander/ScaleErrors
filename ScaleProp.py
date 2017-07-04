@@ -1,0 +1,30 @@
+import numpy as np
+import time
+import naoqi
+import cv2
+import multiprocessing
+import Queue
+
+class ScaleProp(naoqi.ALModule):
+	'''
+	Class for subscribing to the arm joints and writing the data to a queue in set intervals. 
+	'''
+	def __init__(self, ip, port, rate):
+		
+		self.motionProxy = naoqi.ALProxy("ALMotion", ip, port)
+		self.rate = rate
+		
+		# Set data regarding the joints, and how quickly they should relax.
+		self.names = ['RShoulderPitch','RShoulderRoll','RElbowYaw','RElbowRoll','RWristYaw','RHand']
+		stiffnesses = [[1.0,0.5,0.0] for each in range(len(self.names))]
+		times = [[0.2,1.0,2.0] for each in range(len(self.names))]
+		
+		# Smoothly remove stiffness on the right arm. This is better for Pepper than simply using motionProxy.rest()
+		self.motionProxy.stiffnessInterpolation(self.names, stiffnesses, times)
+			
+	def getJoints(self):
+		'''
+		Function that records proprioceptive data and writes to a queue. Should be called as a process.
+		'''
+		joints = self.motionProxy.getAngles(self.names, False)
+		return joints
