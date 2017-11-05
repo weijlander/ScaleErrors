@@ -22,7 +22,7 @@ class ScaleVisual(naoqi.ALModule):
 		cam_name = "camera"     	# creates an identifier for the camera subscription
 		cam_type = 1            		# 0 for top camera , 1 for bottom camera
 		res = 0                 				# 0 = 160x120, 1 = 320x240, 2 = 640x480, 3 = 1280x960, 4 = 2560x1920, 5 = 1280x720, 6 = 1920x1080. NAO only support 0 through 3.
-		col_space = 6          			# RGB colorspace, thus 3 channels
+		col_space = 0          			# luma colorspace, thus 1 channel
 		fps = 30               				# the requested frames per second. with res = 0,1,2 this can be up to 30. with others it is max 7.
 		
 		#subscribing a camera returns a string identifier to be used later on.

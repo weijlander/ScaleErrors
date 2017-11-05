@@ -5,6 +5,7 @@ Created on Tue May 30 11:49:48 2017
 @author: Wouter Eijlander, s4243242
 """
 import numpy as np
+import scipy.io as io
 import time
 import random as r
 import naoqi
@@ -21,9 +22,9 @@ from ScaleProp import *
 # Robot IPs. First four are NAO robots, and are currently only used for testing
 #ip = "192.168.1.143" # Job
 #ip = "192.168.1.102" # Naomi
-#ip = "192.168.1.138" # Marvin
+ip = "192.168.1.138" # Marvin
 #ip = "192.168.1.102" # Jarvis
-ip = "192.168.1.115" # Pepper
+#ip = "192.168.1.115" # Pepper
 port = 9559
 
 '''
@@ -32,7 +33,7 @@ IMPORTANT: CHANGE RECORDING NUMBER FOR EACH RECORDING THAT IS MADE; OTHERWISE IT
 
 recording = 1
 rate = 20
-record_time = 40
+record_time = 10
 
 def writeData(videoQueue,jointQueue,video_data,joint_data):
 	try:
@@ -95,8 +96,8 @@ def requestJoints(jointQueue):
 if __name__ == "__main__":
 	pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, ip, port)
 	print 'starting'
-
-	out_file = open("Data/recording_{}".format(recording),"w")
+	file_name = "Data/recording_{}".format(recording)
+	out_file = open(file_name,"w")
 	
 	try:
 		# initialize queues and all writer- and reader processes.
@@ -134,6 +135,7 @@ if __name__ == "__main__":
 		# store video and joint data lists in a tuple
 		recorded_data = (video_data, joint_data)
 		pickle.dump(recorded_data, out_file)
+		io.savemat(file_name+'.mat', mdict={'arr':recorded_data})
 		out_file.close()
 		
 	except KeyboardInterrupt: 
@@ -150,4 +152,5 @@ if __name__ == "__main__":
 		# store video and joint data lists in a tuple. Consider replacing this with a simple shut-down on all local proxies, for this to serve as an 'abort' button.
 		recorded_data = (video_data, joint_data)
 		pickle.dump(recorded_data, out_file)
+		io.savemat(file_name+'.mat', mdict={'arr':recorded_data})
 		out_file.close()
