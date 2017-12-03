@@ -44,7 +44,7 @@ def subscribeCam(videoProxy):
 
 	# initialize some variables for the camera
 	cam_name = "camera"     	# creates an identifier for the camera subscription
-	cam_type = 0            		# 0 for top camera , 1 for bottom camera
+	cam_type = 0            			# 0 for top camera , 1 for bottom camera
 	res = 0                 				# 0 = 160x120, 1 = 320x240, 2 = 640x480, 3 = 1280x960, 4 = 2560x1920, 5 = 1280x720, 6 = 1920x1080. NAO only support 0 through 3.
 	col_space = 0          			# luma colorspace, thus 1 channel
 	fps = 30               				# the requested frames per second. with res = 0,1,2 this can be up to 30. with others it is max 7.
@@ -57,7 +57,7 @@ videoProxy = naoqi.ALProxy("ALVideoDevice", ip, port)
 motionProxy = naoqi.ALProxy("ALMotion", ip, port)
 postureProxy = naoqi.ALProxy("ALRobotPosture", ip, port)
 
-recording = "door_small"
+recording = "ball_small"
 n_pics = 50
 
 motionProxy.wakeUp()
@@ -69,7 +69,7 @@ motionProxy.setBreathConfig([["BPM",10],["Amplitude",0.8]])
 for i in range(n_pics):
 	motionProxy.setAngles(["HeadPitch","HeadYaw"],[0.25,r.uniform(-0.1,0.1)], 0.3)
 	time.sleep(1)
-	file_name = "testdata/{0}{1}.jpg".format(recording,i)
+	file_name = "VisualData/{0}{1}.jpg".format(recording,i)
 	cam = subscribeCam(videoProxy)
 	im = getFrame(videoProxy, cam)
 	print np.shape(im)

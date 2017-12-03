@@ -18,6 +18,7 @@ class ScaleProp(naoqi.ALModule):
 		self.names = ['RShoulderPitch','RShoulderRoll','RElbowYaw','RElbowRoll','RWristYaw','RHand']
 		stiffnesses = [[1.0,0.5,0.0] for each in range(len(self.names))]
 		times = [[0.2,1.0,2.0] for each in range(len(self.names))]
+		self.motionProxy.setAngles(["HeadPitch","HeadYaw"],[0.25,r.uniform(-0.1,0.1)], 0.3)
 		
 		# Smoothly remove stiffness on the right arm. This is better for Pepper than simply using motionProxy.rest()
 		self.motionProxy.stiffnessInterpolation(self.names, stiffnesses, times)
