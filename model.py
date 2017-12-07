@@ -19,7 +19,7 @@ class Model(naoqi.ALModule):
 		self.type = "error"
 		
 		self.version = "online"		# This is for testing in the lab with a NAO
-		#self.version = "offline"			# This is for testing at home with no robot present. requires testfeats/descriptor.txt 
+		#self.version = "offline"			# This is for testing at home with no robot present. requires testfeats/train_descriptors.txt 
 		
 		weights_file 	= "weights.mat"
 		bias_file 		= "biases.mat"
@@ -27,6 +27,7 @@ class Model(naoqi.ALModule):
 		if self.version == "online":
 			self.pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, self.ip, self.port)
 			self.motionProxy	= naoqi.ALProxy("ALMotion", self.ip, self.port)
+			self.speechProxy	= naoqi.ALProxy("ALTextToSpeech", self.ip, self.port)
 			self.listener 		= ScaleWords(self.ip,self.port,name="listener")
 			self.viewer 		= ScaleVisual(self.ip,self.port,30)
 			self.objects 		= ["chair","door","ball","cylinder"]
@@ -99,33 +100,43 @@ class Model(naoqi.ALModule):
 	def make_decision(self):
 		size 		= (360,240)
 		if self.version == "online":
+			# take visual input and extract features, make random action input, and spot for a word for 5 seconds
 			im 				= cv2.resize(self.viewer.getFrame(),size)
 			in_vis 			= FREAK.calc_freak(im,size)
 			in_vis			= FREAK.convertBinary(in_vis)
 			in_act 			= np.random.randint(2, size = 8)
 			in_aud			= self.listener.wordSpot(self.objects)
 			
-			# determine what action is best given current input, and make the vector binary
+			# Decide probabilities for each action, and make that a binary vector
 			action = self.perform_cycle(in_vis, in_act, in_aud)
 			action[action==np.amax(action)]=1
 			action[action!=1]=0
 			action = [int(dec) for dec in action[0]]
+			
+			# transcribe the action vector to the number corresponding to that action.
 			act_transcribed = self.transcribe(action)
 			
-			self.perform_action(action)
+			# perform the action with the transcribed number
+			self.perform_action(act_transcribed)
 			
 		elif self.version=="offline":
+			# read all FREAK descriptors previously determined
 			with open("testfeats/train_descriptors.txt") as f:
 				features = f.read().splitlines()
 			decisions 	= []
 			categories	= []
+			
+			# for each feature, do the following:
 			for x,feature in enumerate(features):
+				# load the feature and its category, and make a random action and word
 				categories.append(int(feature.split(' ')[-1]))
 				in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
 				in_act 		= np.random.randint(2, size = 8)
 				in_aud 		= np.random.randint(2, size = 4)
 				
+				# looping mechanism, currently not used, but useful once decisions become harder to make
 				#while ((len(decisions)<2 or decisions[-1]!=decisions[-2]) and len(decisions)<20):
+				
 				# determine what action is best given current input, and make the vector binary
 				action = self.perform_cycle(in_vis, in_act, in_aud)
 				action[action==np.amax(action)]=1
@@ -133,12 +144,17 @@ class Model(naoqi.ALModule):
 				action = [int(dec) for dec in action[0]]
 				decisions.append(action)
 			
+			# determine all action numbers corresponding to the action vectors
 			decs_transcribed = [self.transcribe(dec) for dec in decisions]
 			correct = 0
 			scalemistakes = 0
+			
+			# loop over all decisions...
 			for x,dec in enumerate(decs_transcribed):
+				# check if they match the correct decision for that input
 				if dec==categories[x]:
 					correct+=1
+				# and if it doesn't, check if it was a scale error
 				elif (dec==3 and categories[x]==4) or (dec==4 and categories[x]==3) or (dec==1 and categories[x]==2) or (dec==2 and categories[x]==1):
 					scalemistakes+=1
 			print "Number of mistakes: ", 200-correct,"out of", 200
@@ -146,27 +162,46 @@ class Model(naoqi.ALModule):
 			print "Fraction mistakes: ", float(correct)/200.0
 			print "Fraction scale errors/total errors: ", float(scalemistakes)/float(200-correct)
 			
-			
 	def transcribe(self,dec):
 		i = dec.index(1)
-		if i==6:
-			return 3
-		elif i==2:
-			return 4 
-		elif i==7:
-			return 1
-		elif i==3:
+		if i==0: # small ball
+			return 6
+		elif i==1: # small cylinder
+			return 8
+		elif i==2: # small chair
 			return 2
-	
+		elif i==3: # small door
+			return 4
+		elif i==4: # large ball
+			return 5
+		elif i==5: # large cylinder
+			return 7
+		elif i==6: # large chair
+			return 1
+		elif i==7: # large door
+			return 3
+
 	def perform_action(self,action):
-		if action == 3:
-			useBigDoor(self.motionProxy)
-		elif action == 4:
-			useSmallDoor(self.motionProxy)
-		elif action == 1:
+		if action == 1:
 			useBigChair(self.motionProxy)
 		elif action == 2:
 			useSmallChair(self.motionProxy)
+		elif action == 3:
+			useBigDoor(self.motionProxy)
+		elif action == 4:
+			useSmallDoor(self.motionProxy)
+		elif action == 5:
+			print "Large ball spotted!"
+			self.speechProxy.say("This is a arge ball!")
+		elif action == 6:
+			print "Small ball spotted!"
+			self.speechProxy.say("That is a small ball!")
+		elif action == 7:
+			print "Large cylinder spotted!"
+			self.speechProxy.say("This is a large cylinder!")
+		elif action == 8:
+			print "Small cylinder spotted!"
+			self.speechProxy.say("That is a small cylinder!")
 
 	def perform_cycle(self, in_vis, in_act, in_aud):
 		encoding = self.upward_pass(in_vis, in_act, in_aud)
@@ -232,8 +267,6 @@ class integrator():
 		self.c3 = c3
 	
 	def up_pass(self, x_visual, x_prop, x_aud):
-		x_summed = []
-			# assumed weights shape and allocation : (vis_out+prop_out+aud_out,dec_in)
 		s_vis 	= np.dot(x_visual, self.W1)
 		s_prop	= np.dot(x_prop, self.W2)
 		s_aud	= np.dot(x_aud, self.W3)
