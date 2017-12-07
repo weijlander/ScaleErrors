@@ -9,34 +9,34 @@ def main():
 	print sys.version, "\n"
 	dataset_path 		= "testdata"
 	out_file_name 	= "descriptor.txt"
-	out_file 				= open(out_file_name, 'w')
+	out_file 			= open(out_file_name, 'w')
 	features 			= []
 	encodings			= []
-	size 					= (81,72)
+	size 				= (81,72)
 	
 	# list all the files in the dataset
 	files = [f for f in listdir(dataset_path) if isfile(join(dataset_path, f))]
 	
 	for x,file in enumerate(files):
-		if x ==0:
-			print "Analyzing file",x+1,"out of",len(files),"files."
-			print file
-			object_name = file.split("_")[0]				# checks the name of the object
-			object_size = file.split("_")[1][:5]			# checks size of the object (small and large are both 5 letters, thus checking the first 5 letters in a string is fine)
-			
-			image = cv2.imread(dataset_path+"/"+file,0)	# open the current image in grayscale
-			image = cv2.resize(image,size)
-					 
-			encoding = encode(object_name,object_size)	# calculate the object encoding...
-			encodings.append(encoding)						# ... and add it to the list of encodings
-			
-			feature_values = calc_freak(image,size)		# calculate the FREAK descriptor...
-			features.append(feature_values)				# ... and add them to the list of features
-			feature_values = convertBinary(feature_values.tolist())
-			
-			output = '{} {}\n'.format(['{}'.format(x) for x in feature_values],encoding)
-			output = re.sub('[\[\',\'\]]','',output)		# remove all unnecessary characters from the saved string (commas, brackets etc.)
-			out_file.write(output)
+		#if x ==0:
+		print "Analyzing file",x+1,"out of",len(files),"files."
+		print file
+		object_name = file.split("_")[0]				# checks the name of the object
+		object_size = file.split("_")[1][:5]			# checks size of the object (small and large are both 5 letters, thus checking the first 5 letters in a string is fine)
+		
+		image = cv2.imread(dataset_path+"/"+file,0)	# open the current image in grayscale
+		image = cv2.resize(image,size)
+				 
+		encoding = encode(object_name,object_size)	# calculate the object encoding...
+		encodings.append(encoding)						# ... and add it to the list of encodings
+		
+		feature_values = calc_freak(image,size)		# calculate the FREAK descriptor...
+		features.append(feature_values)				# ... and add them to the list of features
+		feature_values = convertBinary(feature_values.tolist())
+		
+		output = '{} {}\n'.format(['{}'.format(x) for x in feature_values],encoding)
+		output = re.sub('[\[\',\'\]]','',output)		# remove all unnecessary characters from the saved string (commas, brackets etc.)
+		out_file.write(output)
 
 
 def convertBinary(features):
@@ -68,13 +68,25 @@ def calc_freak(im,size):
 
 def encode(name, size):
 	# encodes the object based on the name and size. This function could be done far more beautifully using a dictionary, but this suffices for now
-	if name=="door":
+	if name=="chair":
 		if size=="large":
 			return 1
 		elif size=="small":
 			return 2
-	elif name=="chair":
+	elif name=="door":
 		if size=="large":
 			return 3
 		elif size=="small":
 			return 4
+	elif name=="ball":
+		if size=="large":
+			return 5
+		elif size=="small":
+			return 6
+	elif name=="cylinder":
+		if size=="mediu":
+			return 7
+		elif size=="small":
+			return 8																													
+
+main()

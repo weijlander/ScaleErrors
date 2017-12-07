@@ -9,27 +9,27 @@ from testBehaviour import *
 from ScaleAudio import *
 from scipy.special import expit
 
-class Model():
+class Model(naoqi.ALModule):
 	def __init__(self):
 		self.ip		= "192.168.1.137"
 		self.port 	= 9559
 		
 		# Set the amount trained- either fully trained, or still performing errors.
-		self.type = "trained"
-		#self.type = "error"
+		#self.type = "trained"
+		self.type = "error"
 		
-		#self.version = "online"		# This is for testing in the lab with a NAO
-		self.version = "offline"			# This is for testing at home with no robot present. requires testfeats/descriptor.txt 
+		self.version = "online"		# This is for testing in the lab with a NAO
+		#self.version = "offline"			# This is for testing at home with no robot present. requires testfeats/descriptor.txt 
 		
 		weights_file 	= "weights.mat"
 		bias_file 		= "biases.mat"
 		
 		if self.version == "online":
-			self.pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, ip, port)
-			self.videoProxy = naoqi.ALProxy("ALVideoDevice", ip, port)
-		
-			self.scaleVis 		= ScaleVisual(self.videoProxy, 30)
-			self.scaleAud		= ScaleAudio(audioProxy)
+			self.pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, self.ip, self.port)
+			self.motionProxy	= naoqi.ALProxy("ALMotion", self.ip, self.port)
+			self.listener 		= ScaleWords(self.ip,self.port,name="listener")
+			self.viewer 		= ScaleVisual(self.ip,self.port,30)
+			self.objects 		= ["chair","door","ball","cylinder"]
 		
 		model_v					= io.loadmat("ModelData\model\m_percept.mat", struct_as_record=False)
 		self.model_v_1		= model_v['m_percept'][0][0][0][0]
@@ -76,11 +76,11 @@ class Model():
 			c2_dec 			= self.model_int_50[0][0][3]
 			c3_dec 			= self.model_int_50[0][0][5]
 		elif self.type=="error":
-			weights_dec 	= self.model_int_10[0][0][0]
+			weights_dec1	= self.model_int_10[0][0][0]
 			weights_dec2	= self.model_int_10[0][0][2]
 			weights_dec3	= self.model_int_10[0][0][4]
 			b_dec			= self.model_int_10[0][0][6]
-			c1_dec			= self.model_int_10[0][0][1]	
+			c1_dec			= self.model_int_10[0][0][1]
 			c2_dec 			= self.model_int_10[0][0][3]
 			c3_dec 			= self.model_int_10[0][0][5]
 		
@@ -99,33 +99,74 @@ class Model():
 	def make_decision(self):
 		size 		= (360,240)
 		if self.version == "online":
-			im 				= cv2.resize(self.scaleVis.getFrame(),size)
+			im 				= cv2.resize(self.viewer.getFrame(),size)
 			in_vis 			= FREAK.calc_freak(im,size)
 			in_vis			= FREAK.convertBinary(in_vis)
+			in_act 			= np.random.randint(2, size = 8)
+			in_aud			= self.listener.wordSpot(self.objects)
+			
+			# determine what action is best given current input, and make the vector binary
+			action = self.perform_cycle(in_vis, in_act, in_aud)
+			action[action==np.amax(action)]=1
+			action[action!=1]=0
+			action = [int(dec) for dec in action[0]]
+			act_transcribed = self.transcribe(action)
+			
+			self.perform_action(action)
+			
 		elif self.version=="offline":
-			tempFeature 	= open("testfeats/descriptor.txt")
-			in_vis 			= np.array([line.split(' ') for line in tempFeature][0][:-1],dtype=np.dtype(int))
-		
-		in_act 		= np.random.randint(2, size = 8)
-		in_aud 		= [0,0,0,1] #WRITE WORDSPOTTING SCRIPT FOR THIS
-		decisions 	= []	
-		
-		#while ((len(decisions)<2 or decisions[-1]!=decisions[-2]) and len(decisions)<20):
-		action = self.perform_cycle(in_vis, in_act, in_aud)
-		decisions.append(action)
-		
-		print decisions	
-		#perform_action(act)
-		
+			with open("testfeats/train_descriptors.txt") as f:
+				features = f.read().splitlines()
+			decisions 	= []
+			categories	= []
+			for x,feature in enumerate(features):
+				categories.append(int(feature.split(' ')[-1]))
+				in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
+				in_act 		= np.random.randint(2, size = 8)
+				in_aud 		= np.random.randint(2, size = 4)
+				
+				#while ((len(decisions)<2 or decisions[-1]!=decisions[-2]) and len(decisions)<20):
+				# determine what action is best given current input, and make the vector binary
+				action = self.perform_cycle(in_vis, in_act, in_aud)
+				action[action==np.amax(action)]=1
+				action[action!=1]=0
+				action = [int(dec) for dec in action[0]]
+				decisions.append(action)
+			
+			decs_transcribed = [self.transcribe(dec) for dec in decisions]
+			correct = 0
+			scalemistakes = 0
+			for x,dec in enumerate(decs_transcribed):
+				if dec==categories[x]:
+					correct+=1
+				elif (dec==3 and categories[x]==4) or (dec==4 and categories[x]==3) or (dec==1 and categories[x]==2) or (dec==2 and categories[x]==1):
+					scalemistakes+=1
+			print "Number of mistakes: ", 200-correct,"out of", 200
+			print "of which", scalemistakes, " were scale errors"
+			print "Fraction mistakes: ", float(correct)/200.0
+			print "Fraction scale errors/total errors: ", float(scalemistakes)/float(200-correct)
+			
+			
+	def transcribe(self,dec):
+		i = dec.index(1)
+		if i==6:
+			return 3
+		elif i==2:
+			return 4 
+		elif i==7:
+			return 1
+		elif i==3:
+			return 2
+	
 	def perform_action(self,action):
-		if action == 1:
-			useBigDoor(motionProxy)
-		elif action == 2:
-			useSmallDoor(motionProxy)
-		elif action == 3:
-			useBigChair(motionProxy)
+		if action == 3:
+			useBigDoor(self.motionProxy)
 		elif action == 4:
-			useSmallChair(motionProxy)
+			useSmallDoor(self.motionProxy)
+		elif action == 1:
+			useBigChair(self.motionProxy)
+		elif action == 2:
+			useSmallChair(self.motionProxy)
 
 	def perform_cycle(self, in_vis, in_act, in_aud):
 		encoding = self.upward_pass(in_vis, in_act, in_aud)

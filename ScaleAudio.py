@@ -9,7 +9,54 @@ import pickle
 import wave
 import pyaudio
 
-class ScaleAudio():
+class ScaleWords(naoqi.ALModule):
+	'''
+	Class used to detect specific spoken words
+	'''
+	def __init__(self, ip, port, name="word"):
+		self.pythonBroker = naoqi.ALBroker("speechBroker", "0.0.0.0", 9600, ip, port)
+		try:
+			p = naoqi.ALProxy(name)
+			p.exit()
+		except: 
+			pass
+		naoqi.ALModule.__init__(self, name);
+		
+		self.name=name
+		self.speecher = naoqi.ALProxy("ALSpeechRecognition",ip, port)
+		self.speecher.setLanguage("English")
+		
+		self.memory= naoqi.ALProxy("ALMemory")
+		self.word = " "
+	
+	def wordSpot(self, wordlist):
+		'''
+		Function that spots for any words in the given list
+		'''
+		self.speecher.setVocabulary(wordlist, True)
+		self.memory.subscribeToEvent("WordRecognized", self.name, "getWord")
+		time.sleep(2)
+		self.memory.unsubscribeToEvent("WordRecognized", self.name)
+		self.speecher.pause(True)
+		self.pythonBroker.shutdown()
+		return self.vectorise(self.word, wordlist)
+	
+	def getWord(self, key, value, msg):
+		'''
+		Sets the spotted word value
+		'''
+		found = value[0].split(' ')[1]
+		self.word = found
+		
+	def vectorise(self, word, wordlist):
+		vector = np.zeros(4)
+		if word in wordlist:
+			index = wordlist.index(word)
+			vector[index] = 1
+		vector = [int(num) for num in vector]
+		return np.array(vector, dtype=np.dtype(int))
+
+class ScaleAudio(naoqi.ALModule):
 	'''
 	Class used for recording audio and writing to a .wav file.
 	'''
@@ -25,7 +72,7 @@ class ScaleAudio():
 		self.CHUNK = 1024
 		self.RECORD_SECONDS = 0.1
 		self.frames = []
-		
+
 		# open the input audio stream
 		self.audio = pyaudio.PyAudio()
 		self.stream = self.audio.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
@@ -34,7 +81,7 @@ class ScaleAudio():
 		self.audio_file.setnchannels(self.CHANNELS)
 		self.audio_file.setsampwidth(self.audio.get_sample_size(self.FORMAT))
 		self.audio_file.setframerate(self.RATE)
-		
+	
 	def record(self, time):
 		'''
 		Function that records audio data to the internal sound frames. 
