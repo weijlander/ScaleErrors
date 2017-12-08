@@ -8,7 +8,7 @@ import re
 def main():
 	print sys.version, "\n"
 	dataset_path 		= "testdata"
-	out_file_name 	= "descriptor.txt"
+	out_file_name 	= "train_descriptors.txt"
 	out_file 			= open(out_file_name, 'w')
 	features 			= []
 	encodings			= []
