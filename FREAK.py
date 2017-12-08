@@ -88,5 +88,3 @@ def encode(name, size):
 			return 7
 		elif size=="small":
 			return 8																													
-
-main()

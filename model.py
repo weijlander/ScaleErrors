@@ -28,6 +28,7 @@ class Model(naoqi.ALModule):
 			self.pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, self.ip, self.port)
 			self.motionProxy	= naoqi.ALProxy("ALMotion", self.ip, self.port)
 			self.speechProxy	= naoqi.ALProxy("ALTextToSpeech", self.ip, self.port)
+			self.behaviour		= Behaviours(self.ip, self.port)
 			self.listener 		= ScaleWords(self.ip,self.port,name="listener")
 			self.viewer 		= ScaleVisual(self.ip,self.port,30)
 			self.objects 		= ["chair","door","ball","cylinder"]
@@ -104,6 +105,7 @@ class Model(naoqi.ALModule):
 			im 				= cv2.resize(self.viewer.getFrame(),size)
 			in_vis 			= FREAK.calc_freak(im,size)
 			in_vis			= FREAK.convertBinary(in_vis)
+			#in_vis 			= np.random.randint(2, size = 512)
 			in_act 			= np.random.randint(2, size = 8)
 			in_aud			= self.listener.wordSpot(self.objects)
 			
@@ -117,7 +119,7 @@ class Model(naoqi.ALModule):
 			act_transcribed = self.transcribe(action)
 			
 			# perform the action with the transcribed number
-			self.perform_action(act_transcribed)
+			self.perform_action(3)#act_transcribed)
 			
 		elif self.version=="offline":
 			# read all FREAK descriptors previously determined
@@ -183,13 +185,13 @@ class Model(naoqi.ALModule):
 
 	def perform_action(self,action):
 		if action == 1:
-			useBigChair(self.motionProxy)
+			self.behaviour.useBigChair()
 		elif action == 2:
-			useSmallChair(self.motionProxy)
+			self.behaviour.useSmallChair()
 		elif action == 3:
-			useBigDoor(self.motionProxy)
+			self.behaviour.useBigDoor()
 		elif action == 4:
-			useSmallDoor(self.motionProxy)
+			self.behaviour.useSmallDoor()
 		elif action == 5:
 			print "Large ball spotted!"
 			self.speechProxy.say("This is a arge ball!")
