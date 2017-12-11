@@ -18,11 +18,13 @@ import wave
 from ScaleVisual import *
 from ScaleAudio import *
 from ScaleProp import *
+from ReadData import *
+from testBehaviour import *
 
 # Robot IPs. First four are NAO robots, and are currently only used for testing
 #ip = "192.168.1.143" # Job
 #ip = "192.168.1.102" # Naomi
-ip = "192.168.1.138" # Marvin
+ip = "192.168.1.137" # Marvin
 #ip = "192.168.1.102" # Jarvis
 #ip = "192.168.1.115" # Pepper
 port = 9559
@@ -33,7 +35,7 @@ IMPORTANT: CHANGE RECORDING NUMBER FOR EACH RECORDING THAT IS MADE; OTHERWISE IT
 
 recording = 1
 rate = 20
-record_time = 10
+record_time = 40
 
 def writeData(videoQueue,jointQueue,video_data,joint_data):
 	try:
@@ -96,8 +98,9 @@ def requestJoints(jointQueue):
 if __name__ == "__main__":
 	pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, ip, port)
 	print 'starting'
-	file_name = "Data/recording_{}".format(recording)
+	file_name = "InputData/recording_{}".format(recording)
 	out_file = open(file_name,"w")
+	behaver = Behaviours(ip, port)
 	
 	try:
 		# initialize queues and all writer- and reader processes.
@@ -118,7 +121,8 @@ if __name__ == "__main__":
 		
 		# run the script for approx 40 seconds, terminating when the exception is thrown.
 		t = time.clock()
-		while t < 40:
+		behaver.useSmallDoor()
+		while t < record_time:
 			recordAudio.record(0.05)
 			writeData(videoQueue, jointQueue, video_data, joint_data)
 			t= time.clock()
@@ -137,6 +141,7 @@ if __name__ == "__main__":
 		pickle.dump(recorded_data, out_file)
 		io.savemat(file_name+'.mat', mdict={'arr':recorded_data})
 		out_file.close()
+		output = readData(recording)
 		
 	except KeyboardInterrupt: 
 		# user interrupts script to stop it; terminates running processes.
@@ -154,3 +159,4 @@ if __name__ == "__main__":
 		pickle.dump(recorded_data, out_file)
 		io.savemat(file_name+'.mat', mdict={'arr':recorded_data})
 		out_file.close()
+		output = readData(recording)

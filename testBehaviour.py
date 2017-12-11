@@ -20,7 +20,6 @@ class Behaviours(naoqi.ALModule):
 		self.speechProxy = naoqi.ALProxy("ALTextToSpeech",ip,port)
 	
 	def walk50(self):
-		self.postureProxy.goToPosture("Stand", 0.7)
 		# Makes the nao walk forward 50cm
 		x 			= [0.5] # forward movement speeds
 		y 			= [0.0] # sideways movement speeds
@@ -44,6 +43,7 @@ class Behaviours(naoqi.ALModule):
 		angles = [[-0.25,-0.25,-0.25,-0.25,0.4,-0.4,0.4,-0.4,0],[0.4,0.4,-0.4,-0.4,0,0,0,0,0],]
 		times = [[2,3,5,6,8,9,10,11,12] for each in names]
 		
+		self.postureProxy.goToPosture("Stand", 0.5)
 		self.walk50()
 		self.motionProxy.angleInterpolation(names,angles,times,True)
 		self.walk50()
@@ -61,12 +61,14 @@ class Behaviours(naoqi.ALModule):
 		angles = [[-0.1,-0.1,-0.1,-0.1,0,0,0,0,0],[0.4,0.4,-0.4,-0.4,0.2,-0.2,0.2,-0.2,0],]
 		times = [[2,3,5,6,8,9,10,11,12] for each in names]
 		
+		self.postureProxy.goToPosture("Stand", 0.5)
 		self.walk50()
 		self.postureProxy.goToPosture("Crouch",0.8)
 		self.motionProxy.angleInterpolation(names,angles,times,True)
 		
 		# turn around
-		self.motionProxy.moveToward(x[1],y[1],theta[1])
+		self.postureProxy.goToPosture("Stand", 0.5)
+		self.motionProxy.moveToward(x[0],y[0],theta[0])
 		time.sleep(8) 
 		self.motionProxy.stopMove()
 		self.postureProxy.goToPosture("Crouch",0.8)
@@ -78,6 +80,7 @@ class Behaviours(naoqi.ALModule):
 		y 			= [0.0, 0.0, 0.0] # sideways movement speed
 		theta 	= [0.0, 0.5, 0.0] # rotational speed, values above 0 turn nao to the left, values below 0 turn nao to the right.
 		
+		self.postureProxy.goToPosture("Stand", 0.5)
 		self.walk50()
 		
 		# turn around
@@ -119,7 +122,9 @@ class Behaviours(naoqi.ALModule):
 		angles = [[0.4,0.4,0.4,0.4,0.4,0.4,0.4],[0.4,-0.4,0.4,-0.4,0.4,-0.4,0],[-1,-1,-1,-1,-1,-1,1.5],[-0.6,-0.3,-0.6,-0.3,-0.6,-0.3,0],[1.5,1.5,1.5,1.5,1.5,1.5,0.1],[-0.3,-0.3,-0.3,-0.3,-0.3,-0.3,0],[1.5,1.5,1.5,1.5,1.5,1.5,1.5],[1.0,1.0,1.0,1.0,1.0,1.0,1.5],[-1.5,-1.5,-1.5,-1.5,-1.5,-1.5,0],[-1.5,-1.5,-1.5,-1.5,-1.5,-1.5,0]]
 		times = [[2,3,4,5,6,7,9] for each in names]
 		
+		self.postureProxy.goToPosture("Stand", 0.5)
 		self.walk50()
 		self.speechProxy.setVolume(0.5)
 		self.motionProxy.angleInterpolation(names,angles,times,True)
 		self.speechProxy.say("This chair is too small!")
+		self.postureProxy.goToPosture("Crouch",0.8)
