@@ -7,12 +7,12 @@ import re
 
 def main():
 	print sys.version, "\n"
-	dataset_path 		= "testdata"
-	out_file_name 	= "train_descriptors.txt"
-	out_file 			= open(out_file_name, 'w')
+	dataset_path 		= "VisualData"
+	out_file_name 	= "tesfeats\train_descriptors1.txt"
+	out_file 				= open(out_file_name, 'w')
 	features 			= []
 	encodings			= []
-	size 				= (81,72)
+	size 					= (81,72)
 	
 	# list all the files in the dataset
 	files = [f for f in listdir(dataset_path) if isfile(join(dataset_path, f))]

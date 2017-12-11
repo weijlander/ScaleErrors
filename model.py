@@ -18,16 +18,20 @@ class Model(naoqi.ALModule):
 		self.type = "trained"
 		#self.type = "error"
 		
+		# Set number of categories we're using
+		#self.ncats	= 2
+		self.ncats	= 4
+		
 		#self.version = "online"		# This is for testing in the lab with a NAO
 		self.version = "offline"			# This is for testing at home with no robot present. requires testfeats/train_descriptors.txt 
 		
-		input_dir 		= "ModelData/model/" # "ModelData/model4/"
+		input_dir_2 	= "ModelData/model/" 
+		input_dir_4		= "ModelData/model4/"
 		se_dir 			= "during_scale_errors/"
-		se_mat 			= "model10.mat"
+		se_mat_2 		= "model10.mat"
+		se_mat_4		= "model16.mat"
 		tr_dir 			= "aftertraining/"
 		tr_mat 			= "model50.mat"
-		#weights_file 	= "weights.mat"
-		#bias_file 		= "biases.mat"
 		
 		if self.version == "online":
 			self.pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, self.ip, self.port)
@@ -39,17 +43,46 @@ class Model(naoqi.ALModule):
 			self.viewer 		= ScaleVisual(self.ip,self.port,30)
 			self.objects 		= ["chair","door","ball","cylinder"]
 	
-		model_v					= io.loadmat(input_dir+"m_percept.mat", struct_as_record=False)
+		if self.type=="trained":
+			if self.ncats ==2:
+				model_int_50	= io.loadmat(input_dir_2+tr_dir+tr_mat)
+				model_aud		= io.loadmat(input_dir_2+"m_lang.mat", struct_as_record=False)
+				model_act		= io.loadmat(input_dir_2+"m_action.mat", struct_as_record=False)
+				model_v			= io.loadmat(input_dir_2+"m_percept.mat", struct_as_record=False)
+			else:
+				model_int_50	= io.loadmat(input_dir_4+tr_dir+tr_mat)
+				model_aud		= io.loadmat(input_dir_4+"m_lang.mat", struct_as_record=False)
+				model_act		= io.loadmat(input_dir_4+"m_action.mat", struct_as_record=False)
+				model_v			= io.loadmat(input_dir_4+"m_percept.mat", struct_as_record=False)
+			self.model_int	= model_int_50['model']
+			
+		elif self.type=="error":
+			if self.ncats ==2:
+				model_int_10	= io.loadmat(input_dir_2+se_dir+se_mat_2)
+				model_v			= io.loadmat(input_dir_2+"m_percept.mat", struct_as_record=False)
+				model_act		= io.loadmat(input_dir_2+"m_action.mat", struct_as_record=False)
+				model_aud		= io.loadmat(input_dir_2+"m_lang.mat", struct_as_record=False)
+			else:
+				model_int_10	= io.loadmat(input_dir_4+se_dir+se_mat_4)
+				model_v			= io.loadmat(input_dir_4+"m_percept.mat", struct_as_record=False)
+				model_act		= io.loadmat(input_dir_4+"m_action.mat", struct_as_record=False)
+				model_aud		= io.loadmat(input_dir_4+"m_lang.mat", struct_as_record=False)
+			self.model_int	= model_int_10['model']
+			
+		weights_dec1	= self.model_int[0][0][0]
+		weights_dec2	= self.model_int[0][0][2]
+		weights_dec3	= self.model_int[0][0][4]
+		b_dec			= self.model_int[0][0][6]
+		c1_dec			= self.model_int[0][0][1]	
+		c2_dec 			= self.model_int[0][0][3]
+		c3_dec 			= self.model_int[0][0][5]
+			
 		self.model_v_1		= model_v['m_percept'][0][0][0][0]
 		self.model_v_2		= model_v['m_percept'][1][0][0][0]
 		self.model_v_3		= model_v['m_percept'][2][0][0][0]
-
-		model_act				= io.loadmat(input_dir+"m_action.mat", struct_as_record=False)
 		self.model_act_1		= model_act['m_action'][0][0]
-
-		model_aud		= io.loadmat(input_dir+"m_lang.mat", struct_as_record=False)
 		self.model_aud_1	= model_aud['m_lang'][0][0]
-
+		
 		# separate the weights for the visual layers, the proprioceptive layer, the auditive layer, and the integrations
 		weights_v_1 	= self.model_v_1.W
 		weights_v_2 	= self.model_v_2.W
@@ -69,26 +102,6 @@ class Model(naoqi.ALModule):
 		c_act				= self.model_act_1.c
 		c_aud			= self.model_aud_1.c
 		
-		if self.type=="trained":
-			model_int_50	= io.loadmat(input_dir+tr_dir+tr_mat)
-			self.model_int_50	= model_int_50['model']
-			weights_dec1	= self.model_int_50[0][0][0]
-			weights_dec2	= self.model_int_50[0][0][2]
-			weights_dec3	= self.model_int_50[0][0][4]
-			b_dec			= self.model_int_50[0][0][6]
-			c1_dec			= self.model_int_50[0][0][1]	
-			c2_dec 			= self.model_int_50[0][0][3]
-			c3_dec 			= self.model_int_50[0][0][5]
-		elif self.type=="error":
-			model_int_10	= io.loadmat(input_dir+se_dir+se_mat)
-			self.model_int_10	= model_int_10['model']
-			weights_dec1	= self.model_int_10[0][0][0]
-			weights_dec2	= self.model_int_10[0][0][2]
-			weights_dec3	= self.model_int_10[0][0][4]
-			b_dec			= self.model_int_10[0][0][6]
-			c1_dec			= self.model_int_10[0][0][1]
-			c2_dec 			= self.model_int_10[0][0][3]
-			c3_dec 			= self.model_int_10[0][0][5]
 		
 		# three visual input layers
 		self.visual_1 		= RBM(512, 256, W=weights_v_1, B=b_v_1, c=c_v_1)
@@ -110,7 +123,6 @@ class Model(naoqi.ALModule):
 			im 				= cv2.resize(self.viewer.getFrame(),size)
 			in_vis 			= FREAK.calc_freak(im,size)
 			in_vis			= FREAK.convertBinary(in_vis)
-			#in_vis 			= np.random.randint(2, size = 512)
 			in_act 			= np.random.randint(2, size = 8)
 			in_aud			= self.listener.wordSpot(self.objects)
 			
@@ -138,20 +150,37 @@ class Model(naoqi.ALModule):
 				
 			decisions 	= []
 			categories	= []
+			actions		= []
 			
 			# for each feature, do the following:
 			for x,feature in enumerate(features):
 				# load the feature and its category, and make a random action and word
-				categories.append(int(feature.split(' ')[-1]))
-				in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
-				in_act 		= np.random.randint(2, size = 8)
-				in_aud 		= np.random.randint(2, size = 4)
+				category = int(feature.split(' ')[-1])
+				# 2 categories case is different, it should only take chairs and doors
+				if self.ncats==2:
+					if category in [1,2,3,4]:
+						categories.append(category)
+						in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
+						in_act 		= np.random.normal(0.1, 0.05, size = 8)
+						in_aud 		= np.random.normal(0.1, 0.05, size = 4)
 				
-				# looping mechanism, currently not used, but useful once decisions become harder to make
-				#while ((len(decisions)<2 or decisions[-1]!=decisions[-2]) and len(decisions)<20):
-				
-				# determine what action is best given current input, and make the vector binary
-				action = self.perform_cycle(in_vis, in_act, in_aud)
+						# looping mechanism, currently not used, but useful once decisions become harder to make
+						#while ((len(decisions)<2 or decisions[-1]!=decisions[-2]) and len(decisions)<20):
+						
+						# determine what action is best given current input, and make the vector binary
+						action = self.perform_cycle(in_vis, in_act, in_aud)
+				# otherwise it's the 4 category case, which can just go through all features indiscriminately
+				else:
+					categories.append(category)
+					in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
+					in_act 		= np.random.normal(0.1, 0.05, size = 8)
+					in_aud 		= np.random.normal(0.1, 0.05, size = 4)
+			
+					# determine what action is best given current input, and make the vector binary
+					action = self.perform_cycle(in_vis, in_act, in_aud)
+				actions.append(action)
+			
+			for action in actions:
 				if np.amax(action)>0.5:
 					action[action==np.amax(action)]=1
 					action[action!=1]=0
@@ -174,17 +203,21 @@ class Model(naoqi.ALModule):
 					correct+=1
 					
 				# and if it doesn't, check if it was a scale error
-				elif (dec==3 and categories[x]==4) or (dec==4 and categories[x]==3) or (dec==1 and categories[x]==2) or (dec==2 and categories[x]==1):
-					scalemistakes+=1
+				if self.ncats==2:
+					if (dec==3 and categories[x]==4) or (dec==4 and categories[x]==3) or (dec==1 and categories[x]==2) or (dec==2 and categories[x]==1):
+						scalemistakes+=1
+				else:
+					if (dec==3 and categories[x]==4) or (dec==4 and categories[x]==3) or (dec==1 and categories[x]==2) or (dec==2 and categories[x]==1) or (dec==7 and categories[x]==8) or (dec==8 and categories[x]==7) or (dec==5 and categories[x]==6) or (dec==6 and categories[x]==5):
+						scalemistakes+=1
 				
 				# else, if there was no action at all
-				elif dec ==0:
+				if dec ==0:
 					undecided += 1
 			
-			print "Number of mistakes: ", len(features)-correct,"out of", len(features)
+			print "Number of mistakes: ", len(categories)-correct,"out of", len(categories)
 			print "of which", scalemistakes, " were scale errors"
-			print "Fraction mistakes: ", float(len(features)-correct)/len(features)
-			print "Fraction scale errors/total errors: ", float(scalemistakes)/float(len(features)-correct)
+			print "Fraction mistakes: ", float(len(categories)-correct)/len(categories)
+			print "Fraction scale errors/total errors: ", float(scalemistakes)/float(len(categories)-correct)
 			print "Number of undecided cases: ", undecided
 			
 	def transcribe(self,dec):
