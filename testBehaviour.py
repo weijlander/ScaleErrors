@@ -1,6 +1,7 @@
 import time
 import random as r
 import naoqi
+import multiprocessing
 
 # Robot IPs. First four are NAO robots, and are currently only used for testing
 #ip = "192.168.1.143" # Job
@@ -14,6 +15,7 @@ class Behaviours(naoqi.ALModule):
 	def __init__(self,ip,port):
 		self.ip = ip
 		self.port = port
+		self.name = "Behaviour"
 		self.pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, ip, port)
 		self.motionProxy = naoqi.ALProxy("ALMotion", ip, port)
 		self.postureProxy = naoqi.ALProxy("ALRobotPosture",ip,port)
@@ -30,7 +32,7 @@ class Behaviours(naoqi.ALModule):
 		time.sleep(10) # using x = 0.5, y = 0, this moves nao forward by 50cm
 		self.motionProxy.stopMove()
 
-	def useBigDoor(self):
+	def useBigDoor(self, queue=multiprocessing.Queue()):
 		# Assumes Nao is 60 cm away from the door, directly in front of it
 		# Makes the nao walk trhough the door and look around as it does
 		# Still to include: prevent nao from falling over if accidentally used for a small door
@@ -49,12 +51,12 @@ class Behaviours(naoqi.ALModule):
 		self.walk50()
 		self.postureProxy.goToPosture("Crouch",0.8)
 		
-	def useSmallDoor(self):
+	def useSmallDoor(self, queue=multiprocessing.Queue()):
 		# Assumes Nao is 60 cm away form the door, directly inn front of it
 		# 
-		x 			= [0.7] # forward movement speeds
+		x 			= [0.0] # forward movement speeds
 		y 			= [0.0] # sideways movement speeds
-		theta 	= [0.0] # rotational speeds
+		theta 	= [0.7] # rotational speeds
 		
 		# Initialize parameters for the gesture
 		names = ["HeadPitch","HeadYaw"]
@@ -63,9 +65,14 @@ class Behaviours(naoqi.ALModule):
 		
 		self.postureProxy.goToPosture("Stand", 0.5)
 		self.walk50()
+		queue.put(True)
 		self.postureProxy.goToPosture("Crouch",0.8)
 		self.motionProxy.angleInterpolation(names,angles,times,True)
-		
+		try:
+			previous = queue.get(False)
+			queue.put(False)
+		except Queue.Empty:
+			queue.put(False)
 		# turn around
 		self.postureProxy.goToPosture("Stand", 0.5)
 		self.motionProxy.moveToward(x[0],y[0],theta[0])
@@ -73,7 +80,8 @@ class Behaviours(naoqi.ALModule):
 		self.motionProxy.stopMove()
 		self.postureProxy.goToPosture("Crouch",0.8)
 		
-	def useBigChair(self):
+		
+	def useBigChair(self, queue=multiprocessing.Queue()):
 		# Assumes Nao is 50cm away from the large chair, crouched.
 		# Makes Nao walk up to the chair and turn around, ready to sit backwards.
 		x 			= [0.5, 0.0, -0.5] # forward movement speed
@@ -95,7 +103,7 @@ class Behaviours(naoqi.ALModule):
 		
 		self.sitChair()
 
-	def sitChair(self):
+	def sitChair(self, queue=multiprocessing.Queue()):
 		# Makes the nao sit backwards ono a 10cm high chair. Quite a lot of potential code, thus a separate function
 		# Assumes the nao is standing directly in front of the chair.
 		# This makes the nao sit down almost perfectly, but triggers fall detection.

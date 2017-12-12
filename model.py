@@ -138,6 +138,7 @@ class Model(naoqi.ALModule):
 			
 			# transcribe the action vector to the number corresponding to that action.
 			act_transcribed = self.transcribe(action)
+			print "Action", act_transcribed, "was selected, based on model output:", output
 			
 			# perform the action with the transcribed number
 			self.perform_action(act_transcribed, output)

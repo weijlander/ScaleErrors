@@ -62,8 +62,9 @@ class ScaleAudio(naoqi.ALModule):
 	'''
 	def __init__(self, recording):
 		# initalize file name and make .wav file.
-		self.filename = "Data/recording_{0}_audio.wav".format(recording)
+		self.filename = "InputData/recording_{0}_audio.wav".format(recording)
 		self.audio_file = wave.open(self.filename, 'wb')
+		self.name = "recordAudio"
 		
 		# intialize some parameters used for recording
 		self.FORMAT = pyaudio.paInt16
