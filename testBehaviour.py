@@ -16,18 +16,19 @@ class Behaviours(naoqi.ALModule):
 		self.ip = ip
 		self.port = port
 		self.name = "Behaviour"
-		self.pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, ip, port)
+		#self.pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, ip, port)
 		self.motionProxy = naoqi.ALProxy("ALMotion", ip, port)
 		self.postureProxy = naoqi.ALProxy("ALRobotPosture",ip,port)
 		self.speechProxy = naoqi.ALProxy("ALTextToSpeech",ip,port)
 	
-	def walk50(self):
+	def walk50(self,queue1=multiprocessing.Queue()):
 		# Makes the nao walk forward 50cm
 		x 			= [0.5] # forward movement speeds
 		y 			= [0.0] # sideways movement speeds
 		theta 	= [0.0] # rotational speeds
 		
 		# move forward
+		queue1.put("started")
 		self.motionProxy.moveToward(x[0],y[0],theta[0])
 		time.sleep(10) # using x = 0.5, y = 0, this moves nao forward by 50cm
 		self.motionProxy.stopMove()
@@ -51,7 +52,7 @@ class Behaviours(naoqi.ALModule):
 		self.walk50()
 		self.postureProxy.goToPosture("Crouch",0.8)
 		
-	def useSmallDoor(self, queue=multiprocessing.Queue()):
+	def useSmallDoor(self, queue1=multiprocessing.Queue()):
 		# Assumes Nao is 60 cm away form the door, directly inn front of it
 		# 
 		x 			= [0.0] # forward movement speeds
@@ -65,14 +66,9 @@ class Behaviours(naoqi.ALModule):
 		
 		self.postureProxy.goToPosture("Stand", 0.5)
 		self.walk50()
-		queue.put(True)
+		queue1.put(True)
 		self.postureProxy.goToPosture("Crouch",0.8)
 		self.motionProxy.angleInterpolation(names,angles,times,True)
-		try:
-			previous = queue.get(False)
-			queue.put(False)
-		except Queue.Empty:
-			queue.put(False)
 		# turn around
 		self.postureProxy.goToPosture("Stand", 0.5)
 		self.motionProxy.moveToward(x[0],y[0],theta[0])

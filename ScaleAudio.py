@@ -14,7 +14,7 @@ class ScaleWords(naoqi.ALModule):
 	Class used to detect specific spoken words
 	'''
 	def __init__(self, ip, port, name="word"):
-		self.pythonBroker = naoqi.ALBroker("speechBroker", "0.0.0.0", 9600, ip, port)
+		#self.pythonBroker = naoqi.ALBroker("speechBroker", "0.0.0.0", 9600, ip, port)
 		try:
 			p = naoqi.ALProxy(name)
 			p.exit()
@@ -35,10 +35,10 @@ class ScaleWords(naoqi.ALModule):
 		'''
 		self.speecher.setVocabulary(wordlist, True)
 		self.memory.subscribeToEvent("WordRecognized", self.name, "getWord")
-		time.sleep(2)
+		time.sleep(4)
 		self.memory.unsubscribeToEvent("WordRecognized", self.name)
 		self.speecher.pause(True)
-		self.pythonBroker.shutdown()
+		#self.pythonBroker.shutdown()
 		return self.vectorise(self.word, wordlist)
 	
 	def getWord(self, key, value, msg):
