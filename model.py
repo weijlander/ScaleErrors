@@ -13,6 +13,7 @@ class Model(naoqi.ALModule):
 	def __init__(self):
 		self.ip		= "192.168.1.137"
 		self.port 	= 9559
+		self.rec		= "door_small_1"
 		
 		# Set the amount trained- either fully trained, or still performing errors.
 		self.type = "trained"
@@ -22,8 +23,14 @@ class Model(naoqi.ALModule):
 		#self.ncats	= 2
 		self.ncats	= 4
 		
-		#self.version = "online"		# This is for testing in the lab with a NAO
-		self.version = "offline"			# This is for testing at home with no robot present. requires testfeats/train_descriptors.txt 
+		self.looping = True
+		self.nloops = 10
+		
+		self.version = "online"		# This is for testing in the lab with a NAO
+		#self.version = "offline"			# This is for testing at home with no robot present. requires testfeats/train_descriptors.txt 
+		
+		self.filename 	= "robotexperiment/"+str(self.ncats)+"categories/"+str(self.type)+"/"+str(self.rec)
+		self.file 			= open(self.filename, "w")
 		
 		input_dir_2 	= "ModelData/model/" 
 		input_dir_4		= "ModelData/model4/"
@@ -117,109 +124,142 @@ class Model(naoqi.ALModule):
 		
 	def make_decision(self):
 		size 		= (360,240)
-		if self.version == "online":
-			self.postureProxy.goToPosture("Crouch",0.8)
-			# take visual input and extract features, make random action input, and spot for a word for 5 seconds
-			im 				= cv2.resize(self.viewer.getFrame(),size)
-			in_vis 			= FREAK.calc_freak(im,size)
-			in_vis			= FREAK.convertBinary(in_vis)
-			in_act 			= np.random.randint(2, size = 8)
-			in_aud			= self.listener.wordSpot(self.objects)
+		
+		try:
+			if self.version == "online":
 			
-			# Decide probabilities for each action, and make that a binary vector
-			action = self.perform_cycle(in_vis, in_act, in_aud)
-			output = action
-			if np.amax(action)>0.5:
-				action[action==np.amax(action)]=1
-				action[action!=1]=0
-				action = [int(dec) for dec in action[0]]
-			else:
-				action = [0 for each in range(8)]
-			
-			# transcribe the action vector to the number corresponding to that action.
-			act_transcribed = self.transcribe(action)
-			print "Action", act_transcribed, "was selected, based on model output:", output
-			
-			# perform the action with the transcribed number
-			self.perform_action(act_transcribed, output)
-			self.motionProxy.rest()
-			
-		elif self.version=="offline":
-			# read all FREAK descriptors previously determined
-			with open("testfeats/train_descriptors.txt") as f:
-				features = f.read().splitlines()
+				self.postureProxy.goToPosture("Crouch",0.8)
+				# take visual input and extract features, make random action input, and spot for a word for 5 seconds
+				im 				= cv2.resize(self.viewer.getFrame(),size)
+				in_vis 			= FREAK.calc_freak(im,size)
+				in_vis			= FREAK.convertBinary(in_vis)
+				in_act 			= np.random.randint(2, size = 8)
+				in_aud			= self.listener.wordSpot(self.objects)
 				
-			decisions 	= []
-			categories	= []
-			actions		= []
-			
-			# for each feature, do the following:
-			for x,feature in enumerate(features):
-				# load the feature and its category, and make a random action and word
-				category = int(feature.split(' ')[-1])
-				# 2 categories case is different, it should only take chairs and doors
-				if self.ncats==2:
-					if category in [1,2,3,4]:
+				if self.looping:					
+					for k in range(self.nloops):
+						# Decide probabilities for each action, and make that a binary vector
+						action,visual,audio = self.perform_cycle(in_vis, in_act, in_aud)
+						in_act 	= action
+						in_aud 	= audio
+						
+						if np.amax(action)>0.5:
+							action[action==np.amax(action)]=1
+							action[action!=1]=0
+							action = [int(dec) for dec in action[0]]
+						else:
+							action = [0 for each in range(8)]
+						
+						
+					# transcribe the action vector to the number corresponding to that action.
+					act_transcribed = self.transcribe(action)
+					print "Action", act_transcribed, "was selected, based on model output:", output
+					
+					# perform the action with the transcribed number
+					self.save_data(in_vis,in_aud,in_act,action)
+					self.perform_action(act_transcribed, in_act)
+					self.motionProxy.rest()
+					
+				else:
+					# Decide probabilities for each action, and make that a binary vector
+					action,visual,audio = self.perform_cycle(in_vis, in_act, in_aud)
+					output = action
+					if np.amax(action)>0.5:
+						action[action==np.amax(action)]=1
+						action[action!=1]=0
+						action = [int(dec) for dec in action[0]]
+					else:
+						action = [0 for each in range(8)]
+					
+					# transcribe the action vector to the number corresponding to that action.
+					act_transcribed = self.transcribe(action)
+					print "Action", act_transcribed, "was selected, based on model output:", output
+					
+					# perform the action with the transcribed number
+					self.perform_action(act_transcribed, output)
+					self.motionProxy.rest()
+					self.save_data(in_vis,in_aud,output,action)
+				
+			elif self.version=="offline":
+				# read all FREAK descriptors previously determined
+				with open("testfeats/train_descriptors.txt") as f:
+					features = f.read().splitlines()
+					
+				decisions 	= []
+				categories	= []
+				actions		= []
+				
+				# for each feature, do the following:
+				for x,feature in enumerate(features):
+					# load the feature and its category, and make a random action and word
+					category = int(feature.split(' ')[-1])
+					# 2 categories case is different, it should only take chairs and doors
+					if self.ncats==2:
+						if category in [1,2,3,4]:
+							categories.append(category)
+							in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
+							in_act 		= np.random.normal(0.1, 0.05, size = 8)
+							in_aud 		= np.random.normal(0.1, 0.05, size = 4)
+							
+							# determine what action is best given current input, and make the vector binary
+							action = self.perform_cycle(in_vis, in_act, in_aud)
+					# otherwise it's the 4 category case, which can just go through all features indiscriminately
+					else:
 						categories.append(category)
 						in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
 						in_act 		= np.random.normal(0.1, 0.05, size = 8)
 						in_aud 		= np.random.normal(0.1, 0.05, size = 4)
 				
-						# looping mechanism, currently not used, but useful once decisions become harder to make
-						#while ((len(decisions)<2 or decisions[-1]!=decisions[-2]) and len(decisions)<20):
-						
 						# determine what action is best given current input, and make the vector binary
-						action = self.perform_cycle(in_vis, in_act, in_aud)
-				# otherwise it's the 4 category case, which can just go through all features indiscriminately
-				else:
-					categories.append(category)
-					in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
-					in_act 		= np.random.normal(0.1, 0.05, size = 8)
-					in_aud 		= np.random.normal(0.1, 0.05, size = 4)
-			
-					# determine what action is best given current input, and make the vector binary
-					action = self.perform_cycle(in_vis, in_act, in_aud)
-				actions.append(action)
-			
-			for action in actions:
-				if np.amax(action)>0.5:
-					action[action==np.amax(action)]=1
-					action[action!=1]=0
-					action = [int(dec) for dec in action[0]]
-				else:
-					action = [0 for each in range(8)]
-				decisions.append(action)
-			
-			# determine all action numbers corresponding to the action vectors
-			decs_transcribed = [self.transcribe(dec) for dec in decisions]
-			
-			correct = 0
-			scalemistakes = 0
-			undecided = 0
-			
-			# loop over all decisions...
-			for x,dec in enumerate(decs_transcribed):
-				# check if they match the correct decision for that input
-				if dec==categories[x]:
-					correct+=1
-					
-				# and if it doesn't, check if it was a scale error
-				if self.ncats==2:
-					if (dec==3 and categories[x]==4) or (dec==4 and categories[x]==3) or (dec==1 and categories[x]==2) or (dec==2 and categories[x]==1):
-						scalemistakes+=1
-				else:
-					if (dec==3 and categories[x]==4) or (dec==4 and categories[x]==3) or (dec==1 and categories[x]==2) or (dec==2 and categories[x]==1) or (dec==7 and categories[x]==8) or (dec==8 and categories[x]==7) or (dec==5 and categories[x]==6) or (dec==6 and categories[x]==5):
-						scalemistakes+=1
+						action,visual,audio = self.perform_cycle(in_vis, in_act, in_aud)
+					actions.append(action)
 				
-				# else, if there was no action at all
-				if dec ==0:
-					undecided += 1
-			
-			print "Number of mistakes: ", len(categories)-correct,"out of", len(categories)
-			print "of which", scalemistakes, " were scale errors"
-			print "Fraction mistakes: ", float(len(categories)-correct)/len(categories)
-			print "Fraction scale errors/total errors: ", float(scalemistakes)/float(len(categories)-correct)
-			print "Number of undecided cases: ", undecided
+				for action in actions:
+					if np.amax(action)>0.5:
+						action[action==np.amax(action)]=1
+						action[action!=1]=0
+						action = [int(dec) for dec in action[0]]
+					else:
+						action = [0 for each in range(8)]
+					decisions.append(action)
+				
+				# determine all action numbers corresponding to the action vectors
+				decs_transcribed = [self.transcribe(dec) for dec in decisions]
+				
+				correct = 0
+				scalemistakes = 0
+				undecided = 0
+				
+				# loop over all decisions...
+				for x,dec in enumerate(decs_transcribed):
+					# check if they match the correct decision for that input
+					if dec==categories[x]:
+						correct+=1
+						
+					# and if it doesn't, check if it was a scale error
+					if self.ncats==2:
+						if (dec==3 and categories[x]==4) or (dec==4 and categories[x]==3) or (dec==1 and categories[x]==2) or (dec==2 and categories[x]==1):
+							scalemistakes+=1
+					else:
+						if (dec==3 and categories[x]==4) or (dec==4 and categories[x]==3) or (dec==1 and categories[x]==2) or (dec==2 and categories[x]==1) or (dec==7 and categories[x]==8) or (dec==8 and categories[x]==7) or (dec==5 and categories[x]==6) or (dec==6 and categories[x]==5):
+							scalemistakes+=1
+					
+					# else, if there was no action at all
+					if dec ==0:
+						undecided += 1
+				
+				print "Number of mistakes: ", len(categories)-correct,"out of", len(categories)
+				print "of which", scalemistakes, " were scale errors"
+				print "Fraction mistakes: ", float(len(categories)-correct)/len(categories)
+				print "Fraction scale errors/total errors: ", float(scalemistakes)/float(len(categories)-correct)
+				print "Number of undecided cases: ", undecided
+		except KeyboardInterrupt: 
+			# user interrupts script to stop it; terminates running processes.
+			print "Keyboard pressed, terminating"
+			self.motionProxy.stopMove()
+			self.postureProxy.goToPosture('Crouch')
+			self.pythonBroker.shutdown()
+			self.file.close()
 			
 	def transcribe(self,dec):
 		if 1 in dec:
@@ -274,7 +314,7 @@ class Model(naoqi.ALModule):
 	def perform_cycle(self, in_vis, in_act, in_aud):
 		encoding = self.upward_pass(in_vis, in_act, in_aud)
 		vis, act, aud = self.downward_pass(encoding)
-		return act
+		return vis, act, aud
 
 	def upward_pass(self, x_visual, x_act, x_aud):
 		y_visual		= self.visual_1.up_pass(x_visual)
@@ -293,6 +333,13 @@ class Model(naoqi.ALModule):
 		y_visual 						= self.visual_2.down_pass(y_visual)
 		x_visual 						= self.visual_1.down_pass(y_visual)
 		return x_visual, x_act, x_aud
+	
+	def save_data(self, freak, word, output, action):
+		self.file.write("word: "+word)
+		self.file.write("action: "+action)
+		self.file.write("output: "+output)
+		self.file.write("FREAK: "+freak)
+		self.file.close()
 	
 class RBM():
 	def __init__(self, in_size, out_size, W=None, B=None, c=None):

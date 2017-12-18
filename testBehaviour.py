@@ -3,13 +3,7 @@ import random as r
 import naoqi
 import multiprocessing
 
-# Robot IPs. First four are NAO robots, and are currently only used for testing
-#ip = "192.168.1.143" # Job
-#ip = "192.168.1.102" # Naomi
-#ip = "192.168.1.137" # Marvin
-#ip = "192.168.1.102" # Jarvis
-#ip = "192.168.1.115" # Pepper
-#port = 9559
+
 
 class Behaviours(naoqi.ALModule):
 	def __init__(self,ip,port):
@@ -48,12 +42,13 @@ class Behaviours(naoqi.ALModule):
 		
 		self.postureProxy.goToPosture("Stand", 0.5)
 		self.walk50()
+		queue.put(True)
 		self.motionProxy.angleInterpolation(names,angles,times,True)
 		self.walk50()
 		self.postureProxy.goToPosture("Crouch",0.8)
 		
-	def useSmallDoor(self, queue1=multiprocessing.Queue()):
-		# Assumes Nao is 60 cm away form the door, directly inn front of it
+	def useSmallDoor(self, queue=multiprocessing.Queue()):
+		# Assumes Nao is 60 cm away form the door, directly in front of it
 		# 
 		x 			= [0.0] # forward movement speeds
 		y 			= [0.0] # sideways movement speeds
@@ -66,7 +61,7 @@ class Behaviours(naoqi.ALModule):
 		
 		self.postureProxy.goToPosture("Stand", 0.5)
 		self.walk50()
-		queue1.put(True)
+		queue.put(True)
 		self.postureProxy.goToPosture("Crouch",0.8)
 		self.motionProxy.angleInterpolation(names,angles,times,True)
 		# turn around
@@ -96,10 +91,10 @@ class Behaviours(naoqi.ALModule):
 		self.motionProxy.moveToward(x[2],y[2],theta[2])
 		time.sleep(3.3)
 		self.motionProxy.stopMove()
-		
+		queue.put(True)
 		self.sitChair()
 
-	def sitChair(self, queue=multiprocessing.Queue()):
+	def sitChair(self):
 		# Makes the nao sit backwards ono a 10cm high chair. Quite a lot of potential code, thus a separate function
 		# Assumes the nao is standing directly in front of the chair.
 		# This makes the nao sit down almost perfectly, but triggers fall detection.
@@ -113,7 +108,7 @@ class Behaviours(naoqi.ALModule):
 		self.motionProxy.setFallManagerEnabled(True)
 		self.motionProxy.rest()
 		
-	def useSmallChair(self):
+	def useSmallChair(self, queue=multiprocessing.Queue()):
 		# Assumes nao is 50cm away from the small chair, crouched
 		# Makes Nao walk up to the chair and doubt its use since it is too small
 		
@@ -129,6 +124,34 @@ class Behaviours(naoqi.ALModule):
 		self.postureProxy.goToPosture("Stand", 0.5)
 		self.walk50()
 		self.speechProxy.setVolume(0.5)
+		queue.put(True)
 		self.motionProxy.angleInterpolation(names,angles,times,True)
 		self.speechProxy.say("This chair is too small!")
 		self.postureProxy.goToPosture("Crouch",0.8)
+
+	def useBigBall(self, queue=multiprocessing.Queue()):
+		bla = 'bla'
+		self.speechProxy.say("This ball is just a bit too large for me!")
+	
+	def useSmallBall(self, queue=multiprocessing.Queue()):
+		print ""
+		self.speechProxy.say("small ball")
+	
+	def useBigCylinder(self, queue=multiprocessing.Queue()):
+		print ""
+		self.speechProxy.say("large cylinder")
+		
+	def useSmallCylinder(self, queue=multiprocessing.Queue()):
+		print ""
+		self.speechProxy.say("small cylinder")
+	
+if __name__=='__main__':
+	# Robot IPs. First four are NAO robots, and are currently only used for testing
+	#ip = "192.168.1.143" # Job
+	#ip = "192.168.1.102" # Naomi
+	ip = "192.168.1.137" # Marvin
+	#ip = "192.168.1.102" # Jarvis
+	#ip = "192.168.1.115" # Pepper
+	port = 9559
+	behaver = Behaviours(ip,port)
+	behaver.useSmallBall()
