@@ -304,6 +304,7 @@ class Model(naoqi.ALModule):
 			print "Keyboard pressed, terminating"
 			self.motionProxy.stopMove()
 			self.postureProxy.goToPosture('Crouch')
+			self.motionProxy.rest()
 			self.pythonBroker.shutdown()
 			self.file.close()
 			
