@@ -112,22 +112,22 @@ if __name__ == "__main__":
 		startQueue 	= multiprocessing.Queue()
 		endQueue		= multiprocessing.Queue()
 		
-		word 				= ScaleWords(ip,port)
-		recordAudio 	= ScaleAudio(recording)
+		wordlist 	= ["chair","door","ball","cylinder"]
+		listener 				= ScaleWords(ip,port,wordlist)
+		recordAudio 			= ScaleAudio(recording)
 		
 		recordJoints 			= multiprocessing.Process(name='joint_proc', target=requestJoints, args=(jointQueue,startQueue))
 		performBehaviour 	= multiprocessing.Process(name='behav_proc', target=requestBehaviour, args=(startQueue,ip,port))
 		#recordVideo = multiprocessing.Process(name='video_proc', target=requestVideo, args=(videoQueue,))
 
 		# lists for storing both the video data and joint data
-		video_data 	= list()
+		video_data 		= list()
 		joint_data 		= list()
 		word_data 		= list()
 
 		# take a snapshot from the camera before the movement
 		frame 		= cv2.resize(requestVideo(),frame_size)
-		wordlist 	= ["Chair","Door","Ball","Cylinder"]
-		word_data 	= word.wordSpot(wordlist)
+		word_data 	= listener.wordSpot()
 		
 		# start all processes
 		recordJoints.start()

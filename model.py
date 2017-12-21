@@ -8,10 +8,12 @@ from ScaleVisual import *
 from testBehaviour import *
 from ScaleAudio import *
 from scipy.special import expit
+from PIL import Image
 
 class Model(naoqi.ALModule):
 	def __init__(self):
 		self.ip		= "192.168.1.137"
+		#self.ip 		= "192.168.1.143" # Job
 		self.port 	= 9559
 		self.rec		= "door_small_1"
 		
@@ -24,7 +26,7 @@ class Model(naoqi.ALModule):
 		self.ncats	= 4
 		
 		self.looping = True
-		self.nloops = 10
+		self.nloops = 50
 		
 		self.version = "online"		# This is for testing in the lab with a NAO
 		#self.version = "offline"			# This is for testing at home with no robot present. requires testfeats/train_descriptors.txt 
@@ -33,7 +35,7 @@ class Model(naoqi.ALModule):
 		self.file 			= open(self.filename, "w")
 		
 		input_dir_2 	= "ModelData/model/" 
-		input_dir_4		= "ModelData/model4/"
+		input_dir_4	= "ModelData/model4/"
 		se_dir 			= "during_scale_errors/"
 		se_mat_2 		= "model10.mat"
 		se_mat_4		= "model16.mat"
@@ -41,14 +43,14 @@ class Model(naoqi.ALModule):
 		tr_mat 			= "model50.mat"
 		
 		if self.version == "online":
-			self.pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, self.ip, self.port)
+			self.objects 			= ["Chair","Door","Ball","Cylinder"]
+			self.pythonBroker 	= naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, self.ip, self.port)
 			self.motionProxy	= naoqi.ALProxy("ALMotion", self.ip, self.port)
 			self.speechProxy	= naoqi.ALProxy("ALTextToSpeech", self.ip, self.port)
-			self.postureProxy = naoqi.ALProxy("ALRobotPosture", self.ip, self.port)
+			self.postureProxy 	= naoqi.ALProxy("ALRobotPosture", self.ip, self.port)
 			self.behaviour		= Behaviours(self.ip, self.port)
-			self.listener 		= ScaleWords(self.ip,self.port,name="listener")
-			self.viewer 		= ScaleVisual(self.ip,self.port,30)
-			self.objects 		= ["chair","door","ball","cylinder"]
+			self.listener 			= ScaleWords(self.ip,self.port,self.objects,name="listener")
+			self.viewer 			= ScaleVisual(self.ip,self.port,30)
 	
 		if self.type=="trained":
 			if self.ncats ==2:
@@ -109,37 +111,40 @@ class Model(naoqi.ALModule):
 		c_act				= self.model_act_1.c
 		c_aud			= self.model_aud_1.c
 		
-		
 		# three visual input layers
-		self.visual_1 		= RBM(512, 256, W=weights_v_1, B=b_v_1, c=c_v_1)
-		self.visual_2 		= RBM(256, 96, 	W=weights_v_2, B=b_v_2, c=c_v_2)
-		self.visual_3 		= RBM(96, 32,  	W=weights_v_3, B=b_v_3, c=c_v_3)
+		self.visual_1 		= RBM(np.shape(weights_v_1), W=weights_v_1, B=b_v_1, c=c_v_1)
+		self.visual_2 		= RBM(np.shape(weights_v_2), W=weights_v_2, B=b_v_2, c=c_v_2)
+		self.visual_3 		= RBM(np.shape(weights_v_3), W=weights_v_3, B=b_v_3, c=c_v_3)
 		
 		# one action input layer, and one audio
-		self.act_1				= RBM(8, 32, W=weights_act, 	B=b_act, 	c=c_act)
-		self.audit_1			= RBM(4, 32, W=weights_aud, 	B=b_aud, 	c=c_aud)
+		self.act_1				= RBM(np.shape(weights_act), W=weights_act, 	B=b_act, 	c=c_act)
+		self.audit_1			= RBM(np.shape(weights_aud), W=weights_aud, 	B=b_aud, 	c=c_aud)
 		
 		# one integrator on top
-		self.int_layer		= integrator(32,48, W1=weights_dec1, W2=weights_dec2, W3=weights_dec3,B=b_dec, c1=c1_dec, c2=c2_dec, c3=c3_dec)
+		self.int_layer		= integrator(np.shape(weights_dec1), W1=weights_dec1, W2=weights_dec2, W3=weights_dec3,B=b_dec, c1=c1_dec, c2=c2_dec, c3=c3_dec)
 		
 	def make_decision(self):
 		size 		= (360,240)
 		
 		try:
 			if self.version == "online":
-			
-				self.postureProxy.goToPosture("Crouch",0.8)
+				# ensure the right posture
+				self.postureProxy.goToPosture("Stand",0.8)
+				self.motionProxy.setAngles(["HeadPitch","HeadYaw"],[0.25,r.uniform(-0.1,0.1)], 0.3)
+				time.sleep(1)
+				
 				# take visual input and extract features, make random action input, and spot for a word for 5 seconds
 				im 				= cv2.resize(self.viewer.getFrame(),size)
+				Image.fromarray(im).show()
+				in_act 			= np.random.normal(0.1, 0.05, size = 8)
+				in_aud			= self.listener.wordSpot()
 				in_vis 			= FREAK.calc_freak(im,size)
 				in_vis			= FREAK.convertBinary(in_vis)
-				in_act 			= np.random.randint(2, size = 8)
-				in_aud			= self.listener.wordSpot(self.objects)
 				
 				if self.looping:					
 					for k in range(self.nloops):
 						# Decide probabilities for each action, and make that a binary vector
-						action,visual,audio = self.perform_cycle(in_vis, in_act, in_aud)
+						visual,action,audio = self.perform_cycle(in_vis, in_act, in_aud)
 						in_act 	= action
 						in_aud 	= audio
 						
@@ -150,10 +155,9 @@ class Model(naoqi.ALModule):
 						else:
 							action = [0 for each in range(8)]
 						
-						
 					# transcribe the action vector to the number corresponding to that action.
 					act_transcribed = self.transcribe(action)
-					print "Action", act_transcribed, "was selected, based on model output:", output
+					print "Action", act_transcribed, "was selected, based on model output:", in_act, "with audio input: ", in_aud
 					
 					# perform the action with the transcribed number
 					self.save_data(in_vis,in_aud,in_act,action)
@@ -162,7 +166,7 @@ class Model(naoqi.ALModule):
 					
 				else:
 					# Decide probabilities for each action, and make that a binary vector
-					action,visual,audio = self.perform_cycle(in_vis, in_act, in_aud)
+					visual,action,audio = self.perform_cycle(in_vis, in_act, in_aud)
 					output = action
 					if np.amax(action)>0.5:
 						action[action==np.amax(action)]=1
@@ -173,13 +177,13 @@ class Model(naoqi.ALModule):
 					
 					# transcribe the action vector to the number corresponding to that action.
 					act_transcribed = self.transcribe(action)
-					print "Action", act_transcribed, "was selected, based on model output:", output
+					print "Action", act_transcribed, "was selected, based on model output:", output, "with audio input: ", in_aud
 					
 					# perform the action with the transcribed number
+					self.save_data(in_vis,in_aud,output,action)
 					self.perform_action(act_transcribed, output)
 					self.motionProxy.rest()
-					self.save_data(in_vis,in_aud,output,action)
-				
+					
 			elif self.version=="offline":
 				# read all FREAK descriptors previously determined
 				with open("testfeats/train_descriptors.txt") as f:
@@ -193,27 +197,64 @@ class Model(naoqi.ALModule):
 				for x,feature in enumerate(features):
 					# load the feature and its category, and make a random action and word
 					category = int(feature.split(' ')[-1])
-					# 2 categories case is different, it should only take chairs and doors
-					if self.ncats==2:
-						if category in [1,2,3,4]:
+					if self.looping:					
+					
+						# 2 categories case is different, it should only take chairs and doors
+						if self.ncats==2:
+							if category in [1,2,3,4]:
+								categories.append(category)
+								in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
+								in_act 		= np.random.normal(0.1, 0.05, size = 8)
+								in_aud 		= np.random.normal(0.1, 0.05, size = 4)
+								in_vis 		= np.reshape(in_vis, (1,np.shape(in_vis)[0]))
+								in_act		= np.reshape(in_act, (1,np.shape(in_act)[0]))
+								in_aud		= np.reshape(in_aud, (1,np.shape(in_aud)[0]))
+								for k in range(self.nloops):									
+									# determine what action is best given current input, and make the vector binary
+									visual,action,audio = self.perform_cycle(in_vis, in_act, in_aud)
+									in_act = action
+									in_aud = audio
+								actions.append(action)
+								
+						# otherwise it's the 4 category case, which can just go through all features indiscriminately
+						else:
 							categories.append(category)
 							in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
 							in_act 		= np.random.normal(0.1, 0.05, size = 8)
 							in_aud 		= np.random.normal(0.1, 0.05, size = 4)
+							in_vis 		= np.reshape(in_vis, (1,np.shape(in_vis)[0]))
+							in_act		= np.reshape(in_act, (1,np.shape(in_act)[0]))
+							in_aud		= np.reshape(in_aud, (1,np.shape(in_aud)[0]))
+							for k in range(self.nloops):
+								# determine what action is best given current input, and make the vector binary
+								visual,action,audio = self.perform_cycle(in_vis, in_act, in_aud)
+								in_act = action
+								in_aud = audio
+							actions.append(action)
 							
-							# determine what action is best given current input, and make the vector binary
-							action = self.perform_cycle(in_vis, in_act, in_aud)
-					# otherwise it's the 4 category case, which can just go through all features indiscriminately
 					else:
-						categories.append(category)
-						in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
-						in_act 		= np.random.normal(0.1, 0.05, size = 8)
-						in_aud 		= np.random.normal(0.1, 0.05, size = 4)
-				
-						# determine what action is best given current input, and make the vector binary
-						action,visual,audio = self.perform_cycle(in_vis, in_act, in_aud)
-					actions.append(action)
-				
+						# 2 categories case is different, it should only take chairs and doors
+						if self.ncats==2:
+							if category in [1,2,3,4]:							
+								categories.append(category)
+								in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
+								in_act 		= np.random.normal(0.1, 0.05, size = 8)
+								in_aud 		= np.random.normal(0.1, 0.05, size = 4)
+								
+								# determine what action is best given current input, and make the vector binary
+								visual,action,audio = self.perform_cycle(in_vis, in_act, in_aud)
+								actions.append(action)
+						# otherwise it's the 4 category case, which can just go through all features indiscriminately
+						else:					
+							categories.append(category)
+							in_vis 		= np.array(feature.split(' ')[:-1],dtype=np.dtype(int))
+							in_act 		= np.random.normal(0.1, 0.05, size = 8)
+							in_aud 		= np.random.normal(0.1, 0.05, size = 4)
+					
+							# determine what action is best given current input, and make the vector binary
+							visual,action,audio = self.perform_cycle(in_vis, in_act, in_aud)
+							actions.append(action)
+							
 				for action in actions:
 					if np.amax(action)>0.5:
 						action[action==np.amax(action)]=1
@@ -248,11 +289,16 @@ class Model(naoqi.ALModule):
 					if dec ==0:
 						undecided += 1
 				
-				print "Number of mistakes: ", len(categories)-correct,"out of", len(categories)
-				print "of which", scalemistakes, " were scale errors"
-				print "Fraction mistakes: ", float(len(categories)-correct)/len(categories)
-				print "Fraction scale errors/total errors: ", float(scalemistakes)/float(len(categories)-correct)
-				print "Number of undecided cases: ", undecided
+				n_errors = len(categories)-correct
+				
+				print "With ", self.ncats, " categories, and the ", self.type, "network.\n"
+				
+				print "Accuracy:", float(correct)/len(categories)
+				print "Total errors: ", float(n_errors)/len(categories)
+				print "Scale errors: ", float(scalemistakes)/len(categories)
+				print "Category errors: ", float(n_errors-scalemistakes-undecided)/len(categories)
+				print "Undecided: ", float(undecided)/len(categories)
+				
 		except KeyboardInterrupt: 
 			# user interrupts script to stop it; terminates running processes.
 			print "Keyboard pressed, terminating"
@@ -285,28 +331,36 @@ class Model(naoqi.ALModule):
 
 	def perform_action(self,action,output):
 		if action == 1:
-			print "big chair, based on model output: ", output
+			bla = action
+			#print "big chair, based on model output: ", output
 			#self.behaviour.useBigChair()
 		elif action == 2:
-			print "small chair, based on model output: ", output
+			bla = action
+			#print "small chair, based on model output: ", output
 			#self.behaviour.useSmallChair()
 		elif action == 3:
-			print "big door, based on model output: ", output
+			bla = action
+			#print "big door, based on model output: ", output
 			#self.behaviour.useBigDoor()
 		elif action == 4:
-			print "small door, based on model output: ", output
+			bla = action
+			#print "small door, based on model output: ", output
 			#self.behaviour.useSmallDoor()
 		elif action == 5:
-			print "Large ball spotted, based on model output: ", output
+			bla = action
+			#print "Large ball spotted, based on model output: ", output
 			self.speechProxy.say("This is a arge ball!")
 		elif action == 6:
-			print "Small ball spotted, based on model output: ", output
+			bla = action
+			#print "Small ball spotted, based on model output: ", output
 			self.speechProxy.say("That is a small ball!")
 		elif action == 7:
-			print "Large cylinder spotted, based on model output: ", output
+			bla = action
+			#print "Large cylinder spotted, based on model output: ", output
 			self.speechProxy.say("This is a large cylinder!")
 		elif action == 8:
-			print "Small cylinder spotted, based on model output: ", output
+			bla = action
+			#print "Small cylinder spotted, based on model output: ", output
 			self.speechProxy.say("That is a small cylinder!")
 		else:
 			print "No decision could be made. ", output
@@ -335,14 +389,14 @@ class Model(naoqi.ALModule):
 		return x_visual, x_act, x_aud
 	
 	def save_data(self, freak, word, output, action):
-		self.file.write("word: "+word)
-		self.file.write("action: "+action)
-		self.file.write("output: "+output)
-		self.file.write("FREAK: "+freak)
+		self.file.write("word: {}".format(word))
+		self.file.write("action: {}".format(action))
+		self.file.write("output: {}".format(output))
+		self.file.write("FREAK: {}".format(freak))
 		self.file.close()
 	
 class RBM():
-	def __init__(self, in_size, out_size, W=None, B=None, c=None):
+	def __init__(self, (in_size, out_size), W=None, B=None, c=None):
 		self.in_size = in_size
 		self.out_size = out_size
 		if W.shape == (in_size,out_size):
@@ -364,7 +418,7 @@ class RBM():
 		return x
 
 class integrator():
-	def __init__(self, in_size, out_size, W1, W2, W3, B, c1, c2, c3):
+	def __init__(self, (in_size, out_size), W1, W2, W3, B, c1, c2, c3):
 		self.in_size = in_size
 		self.out_size = out_size
 		if W1.shape == (in_size,out_size):
@@ -382,7 +436,7 @@ class integrator():
 		self.c3 = c3
 	
 	def up_pass(self, x_visual, x_prop, x_aud):
-		s_vis 	= np.dot(x_visual, self.W1)
+		s_vis 	= np.dot(x_visual,self.W1)
 		s_prop	= np.dot(x_prop, self.W2)
 		s_aud	= np.dot(x_aud, self.W3)
 		return expit(self.B + s_vis + s_prop + s_aud)
@@ -395,3 +449,5 @@ class integrator():
 
 model = Model()
 model.make_decision()
+model.postureProxy.goToPosture("Crouch",0.5)
+model.motionProxy.rest()

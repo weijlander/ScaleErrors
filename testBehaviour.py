@@ -2,14 +2,14 @@ import time
 import random as r
 import naoqi
 import multiprocessing
-
+import numpy as np
 
 
 class Behaviours(naoqi.ALModule):
-	def __init__(self,ip,port):
+	def __init__(self,ip,port,name="behaviour"):
 		self.ip = ip
 		self.port = port
-		self.name = "Behaviour"
+		self.name = name
 		#self.pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, ip, port)
 		self.motionProxy = naoqi.ALProxy("ALMotion", ip, port)
 		self.postureProxy = naoqi.ALProxy("ALRobotPosture",ip,port)
@@ -130,28 +130,54 @@ class Behaviours(naoqi.ALModule):
 		self.postureProxy.goToPosture("Crouch",0.8)
 
 	def useBigBall(self, queue=multiprocessing.Queue()):
-		bla = 'bla'
-		self.speechProxy.say("This ball is just a bit too large for me!")
+		names = ["RShoulderPitch", "RShoulderRoll", "RElbowRoll","RElbowYaw","RWristYaw"]
+		angles = [[0.3,0.3,-0.3,-0.3,0.3,0.3,-0.3,-0.3,0.3,0.3,-0.3,0.8],[0.3,-0.3,-0.3,0.3,0.3,-0.3,-0.3,0.3,0.3,-0.3,-0.3,0],[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1.5],[-0.3,-0.6,-0.3,-0.6,-0.3,-0.6,-0.3,-0.6,-0.3,-0.6,-0.3,0],[1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5,0.1]]
+		times = [[2,3,4,5,6,7,8,9,10,11,12,14] for each in names]
+		
+		#self.postureProxy.goToPosture("Stand", 0.5)
+		queue.put(True)
+		self.motionProxy.angleInterpolation(names,angles,times,True)
+		self.postureProxy.goToPosture("Crouch",0.8)
 	
 	def useSmallBall(self, queue=multiprocessing.Queue()):
-		print ""
-		self.speechProxy.say("small ball")
-	
-	def useBigCylinder(self, queue=multiprocessing.Queue()):
-		print ""
-		self.speechProxy.say("large cylinder")
+		names = ["RShoulderPitch", "RShoulderRoll", "RElbowRoll","RElbowYaw","RWristYaw"]
+		angles = [[0,0,0,0,0,0,0.8],[0,0,0,0,0,0,0],[0,0,0,0,0,0,1.5],[-1.0,-2.0,-1.0,0,1.0,2.0,0],[-0.7,-1.5,-0.7,0,0.7,1.5,0.1]]
+		times = [[2,3,4,5,6,7,9] for each in names]
 		
+		#self.postureProxy.goToPosture("Stand", 0.5)
+		queue.put(True)
+		self.motionProxy.angleInterpolation(names,angles,times,True)
+		self.postureProxy.goToPosture("Crouch",0.8)
+	
 	def useSmallCylinder(self, queue=multiprocessing.Queue()):
-		print ""
-		self.speechProxy.say("small cylinder")
+		names =  ["LShoulderPitch","LShoulderRoll", "LElbowRoll","LElbowYaw","LWristYaw"]
+		angles = [[0,-0.8,-1.3,-0.8,-0.8,-0.4,-0.2,0,0.8],[0.2,0.5,0.2,0,0,0,0,0,0],[-0.1,-0.1,-0.5,-0.9,-0.8,-0.6, -0.4, -0.4, -0.4],[0,0,0.5,1.2,0.8,0.7,0.6,0,0],[0,0,-0.8,-1.5,-1.8,-1.8,-0.8,-0.4,0]]
+		times = [[1,2,3,5,7,9,11,13,14] for each in names]
+		
+		#self.postureProxy.goToPosture("Stand", 0.5)
+		queue.put(True)
+		self.motionProxy.angleInterpolation(names,angles,times,True)
+		self.postureProxy.goToPosture("Crouch",0.8)
+		
+	def useBigCylinder(self, queue=multiprocessing.Queue()):
+		names =  ["RShoulderPitch", "RShoulderRoll", "RElbowRoll","RElbowYaw","RWristYaw","LShoulderPitch","LShoulderRoll", "LElbowRoll","LElbowYaw","LWristYaw"]
+		angles = [[0.4,0,0,0,0,0,0.4,0.8],[-0.4,-0.7,-1,-0.5,0,0,-0.4,0],[0.5,0.3,0.1,0,0.2, 0.3, 0.7, 1.5],[0,0,0,0,0,0,0,0],[0,0.5,1,1,1,0.5,0,0],[0.4,0,0,0,0,0,0.4,0.8],[0.4,0.7,1,0.5,0,0,0.4,0],[-0.5,-0.3,-0.1,0,-0.2, -0.3, -0.7, -1.5],[0,0,0,0,0,0,0,0],[0,-0.5,-1,-1,-1,-0.5,0,0]]
+		times = [[2,3,4,5,6,7,9,11] for each in names]
+		
+		#self.postureProxy.goToPosture("Stand", 0.5)
+		queue.put(True)
+		self.motionProxy.angleInterpolation(names,angles,times,True)
+		self.postureProxy.goToPosture("Crouch",0.8)
 	
 if __name__=='__main__':
 	# Robot IPs. First four are NAO robots, and are currently only used for testing
-	#ip = "192.168.1.143" # Job
+	ip = "192.168.1.143" # Job
 	#ip = "192.168.1.102" # Naomi
-	ip = "192.168.1.137" # Marvin
+	#ip = "192.168.1.137" # Marvin
 	#ip = "192.168.1.102" # Jarvis
 	#ip = "192.168.1.115" # Pepper
 	port = 9559
-	behaver = Behaviours(ip,port)
-	behaver.useSmallBall()
+	behaviour = Behaviours(ip,port)
+	behaviour.motionProxy.setStiffnesses('Body',1.0)
+	behaviour.useBigCylinder()
+	behaviour.motionProxy.rest()

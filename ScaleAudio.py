@@ -13,8 +13,7 @@ class ScaleWords(naoqi.ALModule):
 	'''
 	Class used to detect specific spoken words
 	'''
-	def __init__(self, ip, port, name="word"):
-		#self.pythonBroker = naoqi.ALBroker("speechBroker", "0.0.0.0", 9600, ip, port)
+	def __init__(self, ip, port, wordlist, name="listener"):
 		try:
 			p = naoqi.ALProxy(name)
 			p.exit()
@@ -22,36 +21,43 @@ class ScaleWords(naoqi.ALModule):
 			pass
 		naoqi.ALModule.__init__(self, name);
 		
-		self.name=name
-		self.speecher = naoqi.ALProxy("ALSpeechRecognition",ip, port)
-		self.speecher.setLanguage("English")
+		self.name					=name
+		self.wordlist 				= wordlist
+		self.speecher				= naoqi.ALProxy("ALSpeechRecognition",ip, port)
+		self.am 						= naoqi.ALProxy("ALAutonomousMoves")
 		
+		self.am.setExpressiveListeningEnabled(False)
+		self.am.setBackgroundStrategy("none")
+		self.speecher.setLanguage("English")
+		self.speecher.setVocabulary(self.wordlist, True)
+	
 		self.memory= naoqi.ALProxy("ALMemory")
 		self.word = " "
-	
-	def wordSpot(self, wordlist):
+		self.done = False
+		
+	def wordSpot(self):
 		'''
 		Function that spots for any words in the given list
 		'''
-		self.speecher.setVocabulary(wordlist, True)
 		self.memory.subscribeToEvent("WordRecognized", self.name, "getWord")
-		time.sleep(4)
+		time.sleep(2)
 		self.memory.unsubscribeToEvent("WordRecognized", self.name)
 		self.speecher.pause(True)
-		#self.pythonBroker.shutdown()
-		return self.vectorise(self.word, wordlist)
+		return self.vectorise()
 	
 	def getWord(self, key, value, msg):
 		'''
 		Sets the spotted word value
 		'''
-		found = value[0].split(' ')[1]
-		self.word = found
+		if not self.done:
+			found = value[0].split(' ')[1]
+			self.word = found
+			self.done = True
 		
-	def vectorise(self, word, wordlist):
+	def vectorise(self):
 		vector = np.zeros(4)
-		if word in wordlist:
-			index = wordlist.index(word)
+		if self.word in self.wordlist:
+			index = self.wordlist.index(self.word)
 			vector[index] = 1
 		vector = [int(num) for num in vector]
 		return np.array(vector, dtype=np.dtype(int))
@@ -101,3 +107,14 @@ class ScaleAudio(naoqi.ALModule):
 		self.audio_file.writeframes(b''.join(self.frames))
 		self.audio_file.close()
 		
+if __name__=="__main__":
+	#ip = "192.168.1.143" # Job
+	#ip = "192.168.1.102" # Naomi
+	ip = "192.168.1.137" # Marvin
+	#ip = "192.168.1.102" # Jarvis
+	#ip = "192.168.1.115" # Pepper
+	port = 9559
+	pythonBroker = naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, ip, port)
+	words = ["Chair","Door","Ball","Cylinder"]
+	listener = ScaleWords(ip,port,words)
+	print listener.wordSpot()
