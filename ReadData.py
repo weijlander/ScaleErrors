@@ -8,8 +8,8 @@ def readData(filename):
 	Returns a tuple of (video_data[x,y,n_frames], joint_data[n_joints, n_frames], sound_data(sampling_rate,sound_data[n_samples]))
 	'''
 	
-	(video_data, joint_data, word_data) = pickle.load(open(filename))
+	(frame, video_data, joint_data, word_data) = pickle.load(open(filename))
 	
 	# this version returns a Wave_read object 
 	sound_data = wave.open(filename+"_audio.wav",'r')
-	return video_data, joint_data, word_data, sound_data
+	return frame, video_data, joint_data, word_data, sound_data

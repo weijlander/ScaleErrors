@@ -171,13 +171,13 @@ class Behaviours(naoqi.ALModule):
 	
 if __name__=='__main__':
 	# Robot IPs. First four are NAO robots, and are currently only used for testing
-	ip = "192.168.1.143" # Job
+	#ip = "192.168.1.143" # Job
 	#ip = "192.168.1.102" # Naomi
-	#ip = "192.168.1.137" # Marvin
+	ip = "192.168.1.137" # Marvin
 	#ip = "192.168.1.102" # Jarvis
 	#ip = "192.168.1.115" # Pepper
 	port = 9559
 	behaviour = Behaviours(ip,port)
 	behaviour.motionProxy.setStiffnesses('Body',1.0)
-	behaviour.useBigCylinder()
+	behaviour.useBigBall()
 	behaviour.motionProxy.rest()

@@ -126,7 +126,7 @@ if __name__ == "__main__":
 		word_data 		= list()
 
 		# take a snapshot from the camera before the movement
-		frame 		= cv2.resize(requestVideo(),frame_size)
+		frame 			= cv2.resize(requestVideo(),frame_size)
 		word_data 	= listener.wordSpot()
 		
 		# start all processes
@@ -147,8 +147,8 @@ if __name__ == "__main__":
 		recordJoints.terminate()
 		
 		video_data = frame
-		#video_data = FREAK.calc_freak(frame, size)
-		#video_data = FREAK.convertBinary(video_data)
+		video_data = FREAK.calc_freak(frame, size)
+		video_data = FREAK.convertBinary(video_data)
 		
 		print "Video data size: ", np.shape(video_data), "\nJoint data size: ", np.shape(joint_data), "\nWord data size: ", np.shape(word_data)
 		
@@ -162,7 +162,7 @@ if __name__ == "__main__":
 		recordAudio.writeSound()
 		
 		# store video and joint data lists in a tuple. Consider replacing this with a simple shut-down on all local proxies, for this to serve as an 'abort' button.
-		recorded_data = (video_data, joint_data, word_data)
+		recorded_data = (frame, video_data, joint_data, word_data)
 		pickle.dump(recorded_data, out_file)
 		io.savemat(file_name+'.mat', mdict={'arr':recorded_data})
 		out_file.close()
@@ -179,8 +179,8 @@ if __name__ == "__main__":
 		recordJoints.terminate()
 		
 		video_data = frame
-		#video_data = FREAK.calc_freak(frame, size)
-		#video_data = FREAK.convertBinary(video_data)
+		video_data = FREAK.calc_freak(frame, size)
+		video_data = FREAK.convertBinary(video_data)
 		
 		print "Video data size: ", np.shape(video_data), "\nJoint data size: ", np.shape(joint_data), "\nWord data size: ", np.shape(word_data)
 		
@@ -194,7 +194,7 @@ if __name__ == "__main__":
 		recordAudio.writeSound()
 		
 		# store video and joint data lists in a tuple. Consider replacing this with a simple shut-down on all local proxies, for this to serve as an 'abort' button.
-		recorded_data = (video_data, joint_data, word_data)
+		recorded_data = (frame, video_data, joint_data, word_data)
 		pickle.dump(recorded_data, out_file)
 		io.savemat(file_name+'.mat', mdict={'arr':recorded_data})
 		out_file.close()

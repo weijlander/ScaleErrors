@@ -334,35 +334,39 @@ class Model(naoqi.ALModule):
 		if action == 1:
 			bla = action
 			#print "big chair, based on model output: ", output
-			#self.behaviour.useBigChair()
+			self.behaviour.useBigChair()
 		elif action == 2:
 			bla = action
 			#print "small chair, based on model output: ", output
-			#self.behaviour.useSmallChair()
+			self.behaviour.useSmallChair()
 		elif action == 3:
 			bla = action
 			#print "big door, based on model output: ", output
-			#self.behaviour.useBigDoor()
+			self.behaviour.useBigDoor()
 		elif action == 4:
 			bla = action
 			#print "small door, based on model output: ", output
-			#self.behaviour.useSmallDoor()
+			self.behaviour.useSmallDoor()
 		elif action == 5:
 			bla = action
 			#print "Large ball spotted, based on model output: ", output
-			self.speechProxy.say("This is a arge ball!")
+			self.speechProxy.say("This is a large ball!")
+			self.behaviour.useBigBall()
 		elif action == 6:
 			bla = action
 			#print "Small ball spotted, based on model output: ", output
 			self.speechProxy.say("That is a small ball!")
+			self.behaviour.useSmallBall()
 		elif action == 7:
 			bla = action
 			#print "Large cylinder spotted, based on model output: ", output
 			self.speechProxy.say("This is a large cylinder!")
+			self.behaviour.useBigCylinder()
 		elif action == 8:
 			bla = action
 			#print "Small cylinder spotted, based on model output: ", output
 			self.speechProxy.say("That is a small cylinder!")
+			self.behaviour.useSmallCylinder()
 		else:
 			print "No decision could be made. ", output
 
