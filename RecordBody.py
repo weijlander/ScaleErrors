@@ -20,7 +20,7 @@ from ScaleVisual import *
 from ScaleAudio import *
 from ScaleProp import *
 from ReadData import *
-from testBehaviour import *
+from TestBehaviour import *
 
 # Robot IPs. First four are NAO robots, and are currently only used for testing
 #ip = "192.168.1.143" # Job
