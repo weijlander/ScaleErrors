@@ -17,6 +17,9 @@ from ScaleProp import *
 ip = "192.168.1.137" # Marvin
 port = 9559
 
+recording = "ball_small"
+n_pics = 50
+
 def getFrame(videoProxy, cam):
 	'''
 	Function that records the video data and writes to the queue. Should be called as a process.
@@ -57,8 +60,6 @@ videoProxy = naoqi.ALProxy("ALVideoDevice", ip, port)
 motionProxy = naoqi.ALProxy("ALMotion", ip, port)
 postureProxy = naoqi.ALProxy("ALRobotPosture", ip, port)
 
-recording = "ball_small"
-n_pics = 50
 
 motionProxy.wakeUp()
 postureProxy.goToPosture("Stand",0.5)

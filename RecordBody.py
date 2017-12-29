@@ -35,10 +35,12 @@ IMPORTANT: CHANGE RECORDN NUMBER FOR EACH RECORDING THAT IS MADE; OTHERWISE IT W
 '''
 
 recordn = 1
-recording = "door_small{}".format(recordn)
-rate = 20
+recordtype = "door_small{}"
+recording = recordtype.format(recordn)
+
 record_time = 40
 n_joint_r = 25
+rate = 20
 
 def writeData(jointQueue,joint_data):
 	try:
@@ -57,17 +59,9 @@ def requestVideo():
 	This function is called as a process and is meant to ensure the images read from the Queue are very recent
 	'''
 	visual = ScaleVisual(ip, port, rate)
-	#while True:
 	# Save an image		
 	image = visual.getFrame()
 	
-	# # if there is an image in the queue, replace it. This minimizes memory load which would otherwise increase quickly
-	# try:
-		# previous = videoQueue.get(False)
-		# del previous
-	# except Queue.Empty:
-		# pass
-			
 	return image
 
 def requestBehaviour(startQueue,ip,port):
@@ -75,7 +69,26 @@ def requestBehaviour(startQueue,ip,port):
 	Request for a certain behaviour to be called.
 	'''
 	behaviour = Behaviours(ip, port)
-	behaviour.useSmallDoor(startQueue)
+	if "door" in recording:
+		if "small" in recording:
+			behaviour.useSmallDoor(startQueue)
+		else:
+			behaviour.useBigDoor(startQueue)
+	elif "chair" in recording:
+		if "small" in recording:
+			behaviour.useSmallChair(startQueue)
+		else:
+			behaviour.useBigChair(startQueue)
+	if "ball" in recording:
+		if "small" in recording:
+			behaviour.useSmallBall(startQueue)
+		else:
+			behaviour.useBigBall(startQueue)
+	if "cylinder" in recording:
+		if "small" in recording:
+			behaviour.useSmallCylinder(startQueue)
+		else:
+			behaviour.useBigCylinder(startQueue)
 		
 def requestJoints(jointQueue,startQueue):
 	'''
@@ -97,6 +110,7 @@ def requestJoints(jointQueue,startQueue):
 		# check if the movement has started and if the movement hasn't ended yet
 		if (not startQueue.empty()):
 			jointQueue.put(joints)
+		time.sleep(1)
 
 if __name__ == "__main__":
 	pythonBroker 	= naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, ip, port)
@@ -104,6 +118,7 @@ if __name__ == "__main__":
 	file_name 		= "InputData/recording_" + recording
 	out_file 			= open(file_name,"w")
 	frame_size 	= (360,240)
+	postureProxy = naoqi.ALProxy("ALRobotPosture",ip,port)
 	
 	try:
 		# initialize queues and all writer- and reader processes.
@@ -112,13 +127,12 @@ if __name__ == "__main__":
 		startQueue 	= multiprocessing.Queue()
 		endQueue		= multiprocessing.Queue()
 		
-		wordlist 	= ["chair","door","ball","cylinder"]
+		wordlist 		= ["chair","door","ball","cylinder"]
 		listener 				= ScaleWords(ip,port,wordlist)
-		recordAudio 			= ScaleAudio(recording)
+		#recordAudio 			= ScaleAudio(recording)
 		
 		recordJoints 			= multiprocessing.Process(name='joint_proc', target=requestJoints, args=(jointQueue,startQueue))
 		performBehaviour 	= multiprocessing.Process(name='behav_proc', target=requestBehaviour, args=(startQueue,ip,port))
-		#recordVideo = multiprocessing.Process(name='video_proc', target=requestVideo, args=(videoQueue,))
 
 		# lists for storing both the video data and joint data
 		video_data 		= list()
@@ -126,24 +140,24 @@ if __name__ == "__main__":
 		word_data 		= list()
 
 		# take a snapshot from the camera before the movement
+		postureProxy.goToPosture("Stand",0.8)
+		time.sleep(1)
 		frame 			= cv2.resize(requestVideo(),frame_size)
 		word_data 	= listener.wordSpot()
 		
 		# start all processes
 		recordJoints.start()
 		performBehaviour.start()
-		#recordVideo.start()
 		
 		# run the script for record_time seconds
 		t = time.clock()
 		while t < record_time:
-			recordAudio.record(1)
+			#recordAudio.record(1)
 			writeData(jointQueue, joint_data)
 			t= time.clock()
 		print "end of movement indicated."
 		
 		# terminate all processes
-		#recordVideo.terminate()
 		recordJoints.terminate()
 		
 		video_data = frame
@@ -159,7 +173,7 @@ if __name__ == "__main__":
 		print "\nJoint data size after clipping: ", np.shape(joint_data)
 		
 		# save recorded .wav file
-		recordAudio.writeSound()
+		#recordAudio.writeSound()
 		
 		# store video and joint data lists in a tuple. Consider replacing this with a simple shut-down on all local proxies, for this to serve as an 'abort' button.
 		recorded_data = (frame, video_data, joint_data, word_data)
@@ -175,7 +189,6 @@ if __name__ == "__main__":
 		# user interrupts script to stop it; terminates running processes.
 		print "Keyboard pressed, terminating"
 		
-		#recordVideo.terminate()
 		recordJoints.terminate()
 		
 		video_data = frame
@@ -191,7 +204,7 @@ if __name__ == "__main__":
 		print "\nJoint data size after clipping: ", np.shape(joint_data)
 		
 		# save recorded .wav file
-		recordAudio.writeSound()
+		#recordAudio.writeSound()
 		
 		# store video and joint data lists in a tuple. Consider replacing this with a simple shut-down on all local proxies, for this to serve as an 'abort' button.
 		recorded_data = (frame, video_data, joint_data, word_data)

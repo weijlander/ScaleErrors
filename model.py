@@ -5,14 +5,14 @@ import FREAK
 import cv2
 import naoqi
 from ScaleVisual import *
-from testBehaviour import *
+from TestBehaviour import *
 from ScaleAudio import *
 from scipy.special import expit
 from PIL import Image
 
 class Model(naoqi.ALModule):
 	def __init__(self):
-		self.ip		= "192.168.1.137"
+		self.ip		= "192.168.1.137" # Marvin
 		#self.ip 		= "192.168.1.143" # Job
 		self.port 	= 9559
 		self.rec		= "door_small_1"

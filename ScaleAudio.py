@@ -43,6 +43,7 @@ class ScaleWords(naoqi.ALModule):
 		time.sleep(2)
 		self.memory.unsubscribeToEvent("WordRecognized", self.name)
 		self.speecher.pause(True)
+		print self.word
 		return self.vectorise()
 	
 	def getWord(self, key, value, msg):
