@@ -43,6 +43,9 @@ n_joint_r = 25
 rate = 20
 
 def writeData(jointQueue,joint_data):
+	'''
+	Write the current state in the joint queue to the recorded joint data
+	'''
 	try:
 		# attempt to get joint positions from the joint queue
 		joints = jointQueue.get()
@@ -55,8 +58,7 @@ def writeData(jointQueue,joint_data):
 
 def requestVideo():
 	'''
-	Request the joints from the visual perception-object, and put them in the Queue
-	This function is called as a process and is meant to ensure the images read from the Queue are very recent
+	Request the frame from the visual perception-object, and put them in the Queue
 	'''
 	visual = ScaleVisual(ip, port, rate)
 	# Save an image		
@@ -113,23 +115,26 @@ def requestJoints(jointQueue,startQueue):
 		time.sleep(1)
 
 if __name__ == "__main__":
+	'''
+	This script is run individually, and records the states from a single action.
+	'''
+	
+	# Set parameters pertaining to the data storage, and open a broker with the NAO
 	pythonBroker 	= naoqi.ALBroker("pythonBroker", "0.0.0.0", 9600, ip, port)
-	print 'starting'
-	file_name 		= "InputData/recording_" + recording
+	file_name 			= "InputData/recording_" + recording
 	out_file 			= open(file_name,"w")
-	frame_size 	= (360,240)
-	postureProxy = naoqi.ALProxy("ALRobotPosture",ip,port)
+	frame_size 		= (360,240)
+	postureProxy 	= naoqi.ALProxy("ALRobotPosture",ip,port)
+	print 'starting'
 	
 	try:
 		# initialize queues and all writer- and reader processes.
-		videoQueue 	= multiprocessing.Queue()
 		jointQueue 	= multiprocessing.Queue()
 		startQueue 	= multiprocessing.Queue()
-		endQueue		= multiprocessing.Queue()
 		
-		wordlist 		= ["chair","door","ball","cylinder"]
+		wordlist 				= ["chair","door","ball","cylinder"]
 		listener 				= ScaleWords(ip,port,wordlist)
-		#recordAudio 			= ScaleAudio(recording)
+		#recordAudio 			= ScaleAudio(recording)			# may cause errors due to computer microphone settings
 		
 		recordJoints 			= multiprocessing.Process(name='joint_proc', target=requestJoints, args=(jointQueue,startQueue))
 		performBehaviour 	= multiprocessing.Process(name='behav_proc', target=requestBehaviour, args=(startQueue,ip,port))
@@ -160,12 +165,14 @@ if __name__ == "__main__":
 		# terminate all processes
 		recordJoints.terminate()
 		
+		# Calculate FREAK descriptors
 		video_data = frame
 		video_data = FREAK.calc_freak(frame, size)
 		video_data = FREAK.convertBinary(video_data)
 		
 		print "Video data size: ", np.shape(video_data), "\nJoint data size: ", np.shape(joint_data), "\nWord data size: ", np.shape(word_data)
 		
+		# Pad the joint data if necessary; if there is too little joint information, the movement had finished early, so padding with the latest joint positions is fine. Otherwise, there is enough data.
 		while len(joint_data)<n_joint_r:
 			joint_data.append(joint_data[-1])
 		joint_data = joint_data[:n_joint_r]
@@ -173,7 +180,7 @@ if __name__ == "__main__":
 		print "\nJoint data size after clipping: ", np.shape(joint_data)
 		
 		# save recorded .wav file
-		#recordAudio.writeSound()
+		#recordAudio.writeSound()		# May cause errors due to computer's microphone settings
 		
 		# store video and joint data lists in a tuple. Consider replacing this with a simple shut-down on all local proxies, for this to serve as an 'abort' button.
 		recorded_data = (frame, video_data, joint_data, word_data)
@@ -182,6 +189,7 @@ if __name__ == "__main__":
 		out_file.close()
 		output = readData(file_name)
 		
+		# terminate behaviour here to allow the robot to finish its movement. shutdown the broker afterwards.
 		performBehaviour.terminate()
 		pythonBroker.shutdown()
 		
@@ -191,12 +199,14 @@ if __name__ == "__main__":
 		
 		recordJoints.terminate()
 		
+		# Calculate FREAK descriptors
 		video_data = frame
 		video_data = FREAK.calc_freak(frame, size)
 		video_data = FREAK.convertBinary(video_data)
 		
 		print "Video data size: ", np.shape(video_data), "\nJoint data size: ", np.shape(joint_data), "\nWord data size: ", np.shape(word_data)
 		
+		# Pad the joint data if necessary; if there is too little joint information, the movement had finished early, so padding with the latest joint positions is fine. Otherwise, there is enough data.
 		while len(joint_data)<n_joint_r:
 			joint_data.append(joint_data[-1])
 		joint_data = joint_data[:n_joint_r]
@@ -213,5 +223,6 @@ if __name__ == "__main__":
 		out_file.close()
 		output = readData(file_name)
 		
+		# terminate behaviour here to allow the robot to finish its movement. shutdown the broker afterwards.
 		performBehaviour.terminate()
 		pythonBroker.shutdown()

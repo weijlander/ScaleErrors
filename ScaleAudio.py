@@ -21,11 +21,13 @@ class ScaleWords(naoqi.ALModule):
 			pass
 		naoqi.ALModule.__init__(self, name);
 		
+		# set the desired words, as well as some proxies for listening and specifically not moving while doing so
 		self.name					=name
 		self.wordlist 				= wordlist
 		self.speecher				= naoqi.ALProxy("ALSpeechRecognition",ip, port)
 		self.am 						= naoqi.ALProxy("ALAutonomousMoves")
 		
+		# set wordspotting and remove listening motions
 		self.am.setExpressiveListeningEnabled(False)
 		self.am.setBackgroundStrategy("none")
 		self.speecher.setLanguage("English")
@@ -39,8 +41,9 @@ class ScaleWords(naoqi.ALModule):
 		'''
 		Function that spots for any words in the given list
 		'''
+		# subscribe to the wordlist to listen to it, and do do so for 4 seconds before unsubscribing (stopping)
 		self.memory.subscribeToEvent("WordRecognized", self.name, "getWord")
-		time.sleep(2)
+		time.sleep(4)
 		self.memory.unsubscribeToEvent("WordRecognized", self.name)
 		self.speecher.pause(True)
 		print self.word
@@ -56,10 +59,16 @@ class ScaleWords(naoqi.ALModule):
 			self.done = True
 		
 	def vectorise(self):
+		'''
+		Turns the currently found word into a 4-length binary vector
+		'''
 		vector = np.zeros(4)
+		# a 1 only needs to be inserted if the found word is actually correct- this prevents fatal errors
 		if self.word in self.wordlist:
+			# check at what index the found word is, and insert the 1 there
 			index = self.wordlist.index(self.word)
 			vector[index] = 1
+		# cast to integers for security purposes, and cast to numyp array for use in the RBMs (np arrays required by scipy)
 		vector = [int(num) for num in vector]
 		return np.array(vector, dtype=np.dtype(int))
 

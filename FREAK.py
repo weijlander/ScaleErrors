@@ -5,7 +5,10 @@ import sys
 import numpy as np
 import re
 
-def main():
+if __name__=='__main__':
+	'''
+	If the script is run on itself, it calculates FREAK descriptors and binarizes them, and saves them in one .txt file using specific formatting discussed earlier in the project (space-separated integers, with a category appended to the end.)
+	'''
 	print sys.version, "\n"
 	dataset_path 		= "VisualData"
 	out_file_name 	= "tesfeats\train_descriptors1.txt"
@@ -50,6 +53,10 @@ def convertBinary(features):
 
 
 def calc_freak(im,size):
+	'''
+	Calculate the freak descriptor given an image and its size- this is not yet a 512-length binary vector!
+	recommended size for this project is 360x240.
+	'''
 	keypoints = []
 	descriptors = []
 	
